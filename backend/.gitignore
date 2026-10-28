@@ -1,0 +1,37 @@
+# Dependencias compiladas y módulos
+node_modules/
+dist/
+
+# Variables de entorno confidenciales
+.env
+.env.local
+.env.*.local
+
+# Logs del sistema
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos de cobertura de código
+coverage/
+.nyc_output/
+
+# Prisma SQLite local (si se usara)
+*.db
+*.db-journal
+
+# Opcional: PDFs grandes si se sincronizan por rsync/S3
+# storage/libros/*.pdf

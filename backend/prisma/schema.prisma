@@ -1,0 +1,185 @@
+// =====================================================================
+// ESQUEMA PRISMA — SISTEMA BIBLIOTECARIO UNAMAD
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------
+
+enum RolUsuario {
+  ESTUDIANTE
+  BIBLIOTECARIO
+  ADMIN
+}
+
+enum FormatoLibro {
+  FISICO
+  DIGITAL
+  HIBRIDO
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+
+enum EstadoPrestamo {
+  ACTIVO
+  DEVUELTO
+  VENCIDO
+}
+
+enum EstadoMulta {
+  PENDIENTE
+  PAGADA
+  CONDONADA
+}
+
+// ---------------------------------------------------------------------
+// MODELOS
+// ---------------------------------------------------------------------
+
+model Usuario {
+  id           Int        @id @default(autoincrement())
+  codigo       String     @unique @db.VarChar(50) // 8 dígitos para estudiantes, ej: 20230451. Prefijo para admin: ADMIN-01
+  password     String     @db.VarChar(255)
+  nombre       String     @db.VarChar(100) // Primer nombre
+  apellido     String     @db.VarChar(100) // Primer apellido
+  carrera      String?    @db.VarChar(150) // Selector de carreras UNAMAD
+  telefono     String?    @db.VarChar(30)
+  email        String     @unique @db.VarChar(150) // {codigo}@unamad.edu.pe
+  rol          RolUsuario @default(ESTUDIANTE)
+  activo       Boolean    @default(true)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  solicitudes  SolicitudPrestamo[]
+  prestamos    Prestamo[]
+  multas       Multa[]
+
+  @@index([codigo])
+  @@index([rol])
+  @@map("usuarios")
+}
+
+model Libro {
+  id                   Int          @id @default(autoincrement())
+  titulo               String       @db.VarChar(255)
+  autor                String       @db.VarChar(255)
+  categoria            String       @db.VarChar(100)
+  isbn                 String       @unique @db.VarChar(50)
+  formato              FormatoLibro @default(DIGITAL)
+  ejemplaresTotales    Int          @default(1) @map("ejemplares_totales")
+  ejemplaresDisponibles Int         @default(1) @map("ejemplares_disponibles")
+  ubicacion            String       @default("Repositorio Digital UNAMAD") @db.VarChar(100)
+  archivoUrl           String       @map("archivo_url") @db.VarChar(500)
+  archivoNombre        String       @map("archivo_nombre") @db.VarChar(255)
+  sha256               String       @db.VarChar(64)
+  tamanoMb             Decimal      @map("tamano_mb") @db.Decimal(6, 2)
+  portadaUrl           String?      @map("portada_url") @db.VarChar(255)
+  resumen              String?      @db.Text
+  year                 String?      @default("2024") @db.VarChar(10)
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  solicitudes          SolicitudPrestamo[]
+  prestamos            Prestamo[]
+  multas               Multa[]
+
+  @@index([categoria])
+  @@index([titulo])
+  @@index([sha256])
+  @@map("libros")
+}
+
+model SolicitudPrestamo {
+  id                 Int             @id @default(autoincrement())
+  usuarioId          Int             @map("usuario_id")
+  usuario            Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  libroId            Int             @map("libro_id")
+  libro              Libro           @relation(fields: [libroId], references: [id], onDelete: Cascade)
+  codigoEstudiante   String          @map("codigo_estudiante") @db.VarChar(50)
+  nombreEstudiante   String          @map("nombre_estudiante") @db.VarChar(150)
+  carreraEstudiante  String          @map("carrera_estudiante") @db.VarChar(150)
+  telefonoEstudiante String          @map("telefono_estudiante") @db.VarChar(30)
+  fechaSolicitud     DateTime        @default(now()) @map("fecha_solicitud")
+  estado             EstadoSolicitud @default(PENDIENTE)
+  diasSolicitados    Int             @default(7) @map("dias_solicitados")
+  notas              String?         @db.Text
+  fechaRespuesta     DateTime?       @map("fecha_respuesta")
+  motivoRechazo      String?         @map("motivo_rechazo") @db.Text
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  prestamo           Prestamo?
+
+  @@index([usuarioId])
+  @@index([libroId])
+  @@index([estado])
+  @@map("solicitudes_prestamo")
+}
+
+model Prestamo {
+  id                     Int                @id @default(autoincrement())
+  solicitudId            Int?               @unique @map("solicitud_id")
+  solicitud              SolicitudPrestamo? @relation(fields: [solicitudId], references: [id], onDelete: SetNull)
+  usuarioId              Int                @map("usuario_id")
+  usuario                Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  libroId                Int                @map("libro_id")
+  libro                  Libro              @relation(fields: [libroId], references: [id], onDelete: Cascade)
+  nombreLector           String             @map("nombre_lector") @db.VarChar(150)
+  codigoLector           String             @map("codigo_lector") @db.VarChar(50)
+  carreraOArea           String             @map("carrera_o_area") @db.VarChar(150)
+  telefonoLector         String             @map("telefono_lector") @db.VarChar(30)
+  fechaPrestamo          DateTime           @default(now()) @map("fecha_prestamo")
+  fechaDevolucionEstimada DateTime          @map("fecha_devolucion_estimada")
+  fechaDevolucionReal    DateTime?          @map("fecha_devolucion_real")
+  estado                 EstadoPrestamo     @default(ACTIVO)
+  notas                  String?            @db.Text
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  multas                 Multa[]
+
+  @@index([usuarioId])
+  @@index([libroId])
+  @@index([estado])
+  @@map("prestamos")
+}
+
+model Multa {
+  id               Int         @id @default(autoincrement())
+  prestamoId       Int         @map("prestamo_id")
+  prestamo         Prestamo    @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
+  usuarioId        Int         @map("usuario_id")
+  usuario          Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  libroId          Int         @map("libro_id")
+  libro            Libro       @relation(fields: [libroId], references: [id], onDelete: Cascade)
+  codigoEstudiante String      @map("codigo_estudiante") @db.VarChar(50)
+  nombreEstudiante String      @map("nombre_estudiante") @db.VarChar(150)
+  tituloLibro      String      @map("titulo_libro") @db.VarChar(255)
+  diasRetraso      Int         @map("dias_retraso")
+  montoTotal       Decimal     @map("monto_total") @db.Decimal(6, 2)
+  estado           EstadoMulta @default(PENDIENTE)
+  fechaGeneracion  DateTime    @default(now()) @map("fecha_generacion")
+  fechaPago        DateTime?   @map("fecha_pago")
+  observaciones    String?     @db.Text
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  @@index([usuarioId])
+  @@index([prestamoId])
+  @@index([estado])
+  @@map("multas")
+}

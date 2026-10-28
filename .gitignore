@@ -1,0 +1,29 @@
+*.iml
+.gradle
+.idea/
+/local.properties
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# ---------------------------------------------------------------------
+# MONOREPO — BACKEND (Node.js / TypeScript / Prisma)
+# ---------------------------------------------------------------------
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+
+# ---------------------------------------------------------------------
+# HERRAMIENTAS Y AGENTES
+# ---------------------------------------------------------------------
+.opencode/
+
