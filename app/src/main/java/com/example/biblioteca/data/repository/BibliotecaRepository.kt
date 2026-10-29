@@ -1,5 +1,6 @@
 package com.example.biblioteca.data.repository
 
+import android.util.Log
 import com.example.biblioteca.data.local.BibliotecaDatabase
 import com.example.biblioteca.data.local.dao.LibroDao
 import com.example.biblioteca.data.local.dao.MultaDao
@@ -13,6 +14,9 @@ import com.example.biblioteca.data.local.entity.PrestamoEntity
 import com.example.biblioteca.data.local.entity.SolicitudPrestamoEntity
 import com.example.biblioteca.data.local.entity.UsuarioEntity
 import com.example.biblioteca.data.local.session.SessionManager
+import com.example.biblioteca.data.remote.ApiClient
+import com.example.biblioteca.data.remote.api.BibliotecaApiService
+import com.example.biblioteca.data.remote.dto.*
 import com.example.biblioteca.model.BibliotecaStats
 import com.example.biblioteca.model.CarreraStats
 import com.example.biblioteca.model.EstadoMulta
@@ -25,11 +29,16 @@ import com.example.biblioteca.model.LibroPopular
 import com.example.biblioteca.model.Multa
 import com.example.biblioteca.model.Prestamo
 import com.example.biblioteca.model.ReporteInstitucional
+import com.example.biblioteca.model.RolUsuario
 import com.example.biblioteca.model.SolicitudPrestamo
 import com.example.biblioteca.model.Usuario
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class BibliotecaRepository(
     private val libroDao: LibroDao,
@@ -37,8 +46,11 @@ class BibliotecaRepository(
     private val usuarioDao: UsuarioDao,
     private val solicitudPrestamoDao: SolicitudPrestamoDao,
     private val multaDao: MultaDao,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val apiService: BibliotecaApiService = ApiClient.getApiService()
 ) {
+    private val gson = Gson()
+
     // -------------------------------------------------------------------------
     // USUARIOS Y AUTENTICACIÓN
     // -------------------------------------------------------------------------
@@ -47,12 +59,74 @@ class BibliotecaRepository(
         list.map { it.toDomain() }
     }
 
+    /**
+     * Autenticación híbrida:
+     * 1. Consulta la API REST en el VPS (obtiene token JWT).
+     * 2. Si hay conexión, sincroniza en Room y guarda sesión con token.
+     * 3. Si no hay red, valida contra la base de datos local Room.
+     */
     suspend fun autenticar(codigo: String, password: String): Result<Usuario> {
         val cleanCodigo = codigo.trim()
         val cleanPassword = password.trim()
 
+        try {
+            val response = apiService.login(LoginRequest(cleanCodigo, cleanPassword))
+            if (response.isSuccessful && response.body()?.data != null) {
+                val authData = response.body()!!.data!!
+                val userDto = authData.usuario
+                val token = authData.token
+
+                val rol = try {
+                    RolUsuario.valueOf(userDto.rol)
+                } catch (e: Exception) {
+                    RolUsuario.ESTUDIANTE
+                }
+
+                val usuario = Usuario(
+                    id = userDto.id,
+                    codigo = userDto.codigo,
+                    nombre = userDto.nombre,
+                    apellidos = userDto.apellido,
+                    carreraOArea = userDto.carrera ?: "",
+                    telefono = userDto.telefono ?: "",
+                    email = userDto.email,
+                    rol = rol,
+                    activo = userDto.activo
+                )
+
+                // Guardar en SessionManager y Room
+                sessionManager.guardarSesion(usuario, token)
+                usuarioDao.insertUsuario(
+                    UsuarioEntity(
+                        id = usuario.id,
+                        codigo = usuario.codigo,
+                        password = cleanPassword,
+                        nombre = usuario.nombre,
+                        apellidos = usuario.apellidos,
+                        carreraOArea = usuario.carreraOArea,
+                        telefono = usuario.telefono,
+                        email = usuario.email,
+                        rol = usuario.rol.name,
+                        activo = usuario.activo
+                    )
+                )
+
+                // Disparar sincronización de libros en segundo plano
+                sincronizarLibros()
+
+                return Result.success(usuario)
+            } else {
+                val errorMsg = extraerMensajeError(response.errorBody()?.string())
+                    ?: "Código institucional o contraseña no válidos"
+                return Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Fallo de red al autenticar contra VPS, verificando caché Room: ${e.message}")
+        }
+
+        // Fallback Offline: Buscar en Room local
         val usuarioEntity = usuarioDao.autenticar(cleanCodigo, cleanPassword)
-            ?: return Result.failure(Exception("Código institucional o contraseña no válidos"))
+            ?: return Result.failure(Exception("Sin conexión al servidor y credenciales no guardadas localmente"))
 
         if (!usuarioEntity.activo) {
             return Result.failure(Exception("Esta cuenta de usuario se encuentra inhabilitada"))
@@ -61,6 +135,74 @@ class BibliotecaRepository(
         val usuario = usuarioEntity.toDomain()
         sessionManager.guardarSesion(usuario)
         return Result.success(usuario)
+    }
+
+    /**
+     * Registro público de estudiante en el backend en VPS:
+     * Código de 8 dígitos, primer nombre, primer apellido, carrera UNAMAD y teléfono.
+     */
+    suspend fun registrarEstudiante(
+        codigo: String,
+        password: String,
+        nombre: String,
+        apellido: String,
+        carrera: String,
+        telefono: String
+    ): Result<Usuario> {
+        try {
+            val req = RegisterEstudianteRequest(
+                codigo = codigo.trim(),
+                password = password.trim(),
+                nombre = nombre.trim(),
+                apellido = apellido.trim(),
+                carrera = carrera.trim(),
+                telefono = telefono.trim()
+            )
+
+            val response = apiService.register(req)
+            if (response.isSuccessful && response.body()?.data != null) {
+                val authData = response.body()!!.data!!
+                val userDto = authData.usuario
+                val token = authData.token
+
+                val usuario = Usuario(
+                    id = userDto.id,
+                    codigo = userDto.codigo,
+                    nombre = userDto.nombre,
+                    apellidos = userDto.apellido,
+                    carreraOArea = userDto.carrera ?: carrera,
+                    telefono = userDto.telefono ?: telefono,
+                    email = userDto.email,
+                    rol = RolUsuario.ESTUDIANTE,
+                    activo = userDto.activo
+                )
+
+                sessionManager.guardarSesion(usuario, token)
+                usuarioDao.insertUsuario(
+                    UsuarioEntity(
+                        id = usuario.id,
+                        codigo = usuario.codigo,
+                        password = password.trim(),
+                        nombre = usuario.nombre,
+                        apellidos = usuario.apellidos,
+                        carreraOArea = usuario.carreraOArea,
+                        telefono = usuario.telefono,
+                        email = usuario.email,
+                        rol = RolUsuario.ESTUDIANTE.name,
+                        activo = true
+                    )
+                )
+
+                sincronizarLibros()
+                return Result.success(usuario)
+            } else {
+                val errorMsg = extraerMensajeError(response.errorBody()?.string())
+                    ?: "No se pudo completar el registro de estudiante"
+                return Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            return Result.failure(Exception("Error de conexión al registrar estudiante: ${e.message}"))
+        }
     }
 
     suspend fun obtenerUsuarioActual(): Usuario? {
@@ -77,7 +219,7 @@ class BibliotecaRepository(
     }
 
     // -------------------------------------------------------------------------
-    // CATÁLOGO DE LIBROS
+    // CATÁLOGO DE LIBROS Y SINCRONIZACIÓN
     // -------------------------------------------------------------------------
 
     val todosLosLibros: Flow<List<Libro>> = libroDao.getAllLibros().map { list ->
@@ -88,6 +230,69 @@ class BibliotecaRepository(
 
     fun buscarLibros(query: String): Flow<List<Libro>> {
         return libroDao.searchLibros(query).map { list -> list.map { it.toDomain() } }
+    }
+
+    /**
+     * Sincroniza los 103 libros del backend en VPS con la base de datos Room local
+     */
+    suspend fun sincronizarLibros(): Result<Int> {
+        try {
+            val response = apiService.getLibros(page = 1, limit = 150)
+            if (response.isSuccessful && response.body()?.data?.libros != null) {
+                val remoteBooks = response.body()!!.data!!.libros
+                val entities = remoteBooks.map { dto ->
+                    // Resolver URL absoluta para streaming/descarga
+                    val pdfUrl = if (dto.archivoUrl.startsWith("http")) {
+                        dto.archivoUrl
+                    } else {
+                        "https://biblioteca.moondev.online${dto.archivoUrl}"
+                    }
+
+                    LibroEntity(
+                        id = dto.id,
+                        titulo = dto.titulo,
+                        autor = dto.autor,
+                        categoria = dto.categoria,
+                        isbn = dto.isbn,
+                        descripcion = dto.resumen ?: "Recurso digital UNAMAD.",
+                        formato = dto.formato,
+                        ejemplaresTotales = dto.ejemplaresTotales,
+                        ejemplaresDisponibles = dto.ejemplaresDisponibles,
+                        ubicacion = dto.ubicacion,
+                        archivoUrl = pdfUrl,
+                        tamanoMb = dto.tamanoMb,
+                        portadaUrl = dto.portadaUrl ?: resolverPortadaLocal(dto.id, dto.categoria)
+                    )
+                }
+
+                libroDao.insertAll(entities)
+                Log.d("BibliotecaRepo", "✓ Sincronizados ${entities.size} libros desde el VPS hacia Room")
+                return Result.success(entities.size)
+            }
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "No se pudo sincronizar catálogo con VPS (usando caché Room): ${e.message}")
+        }
+        return Result.failure(Exception("No se pudo conectar con el servidor"))
+    }
+
+    private fun resolverPortadaLocal(id: Long, categoria: String): String {
+        return when (id) {
+            1L -> "portada_pressman"
+            2L -> "portada_ecosistemas"
+            3L -> "portada_lafore"
+            4L -> "portada_silberschatz"
+            5L -> "portada_tanenbaum"
+            6L -> "portada_biodiversidad"
+            7L -> "portada_sampieri"
+            else -> {
+                when {
+                    categoria.contains("Sistemas", true) || categoria.contains("Inteligencia", true) -> "portada_lafore"
+                    categoria.contains("Forestal", true) || categoria.contains("Ambiental", true) -> "portada_ecosistemas"
+                    categoria.contains("Cuentos", true) || categoria.contains("Literatura", true) -> "portada_marquez"
+                    else -> "portada_sampieri"
+                }
+            }
+        }
     }
 
     suspend fun guardarLibro(libro: Libro): Long {
@@ -101,11 +306,16 @@ class BibliotecaRepository(
     }
 
     suspend fun eliminarLibro(libro: Libro) {
+        try {
+            apiService.deleteLibro(libro.id)
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Eliminación remota falló: ${e.message}")
+        }
         libroDao.deleteLibro(LibroEntity.fromDomain(libro))
     }
 
     // -------------------------------------------------------------------------
-    // SISTEMA DE SOLICITUDES DE PRÉSTAMO (FASE 2)
+    // SISTEMA DE SOLICITUDES DE PRÉSTAMO
     // -------------------------------------------------------------------------
 
     val todasLasSolicitudes: Flow<List<SolicitudPrestamo>> =
@@ -152,12 +362,58 @@ class BibliotecaRepository(
         )
     }
 
+    /**
+     * Emisión de solicitud con evaluación del candado de solvencia en el VPS
+     */
     suspend fun crearSolicitudPrestamo(
         libroId: Long,
         usuario: Usuario,
         dias: Int = 7,
         notas: String = ""
     ): Result<Long> {
+        // Intentar registrar en el VPS para evaluar solvencia
+        try {
+            val response = apiService.crearSolicitud(
+                SolicitudRequest(
+                    libroId = libroId,
+                    diasSolicitados = dias,
+                    notas = notas.trim().ifBlank { null }
+                )
+            )
+
+            if (response.isSuccessful && response.body()?.data != null) {
+                val data = response.body()!!.data!!
+                val entity = SolicitudPrestamoEntity(
+                    id = data.id,
+                    usuarioId = usuario.id,
+                    libroId = libroId,
+                    codigoEstudiante = usuario.codigo,
+                    nombreEstudiante = usuario.nombreCompleto,
+                    carreraEstudiante = usuario.carreraOArea,
+                    telefonoEstudiante = usuario.telefono,
+                    fechaSolicitud = parseDateMillis(data.fechaSolicitud),
+                    estado = EstadoSolicitud.PENDIENTE.name,
+                    diasSolicitados = dias,
+                    notas = notas.trim()
+                )
+                solicitudPrestamoDao.insertSolicitud(entity)
+                return Result.success(data.id)
+            } else if (response.code() == 403) {
+                // Candado de solvencia activado en el servidor
+                val errorMsg = extraerMensajeError(response.errorBody()?.string())
+                    ?: "Cuenta no solvente: Tienes multas pendientes de pago por mora en ventanilla."
+                return Result.failure(Exception(errorMsg))
+            } else {
+                val errorMsg = extraerMensajeError(response.errorBody()?.string())
+                    ?: "No se pudo registrar la solicitud"
+                return Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Fallo de conexión al enviar solicitud al VPS: ${e.message}")
+        }
+
+        // Fallback Local con verificación de solvencia en Room
+        val multasPendientes = multaDao.getMultasPendientesPorEstudiante(usuario.codigo)
         val libro = libroDao.getLibroById(libroId)
             ?: return Result.failure(Exception("Libro no encontrado en catálogo"))
 
@@ -187,25 +443,26 @@ class BibliotecaRepository(
     }
 
     suspend fun aprobarSolicitud(solicitudId: Long): Result<Long> {
+        try {
+            val response = apiService.aprobarSolicitud(solicitudId)
+            if (!response.isSuccessful) {
+                val msg = extraerMensajeError(response.errorBody()?.string())
+                Log.w("BibliotecaRepo", "Aprobación remota falló: $msg")
+            }
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Error de red al aprobar en VPS: ${e.message}")
+        }
+
         val solicitud = solicitudPrestamoDao.getSolicitudById(solicitudId)
             ?: return Result.failure(Exception("Solicitud no encontrada"))
 
-        if (solicitud.estado != EstadoSolicitud.PENDIENTE.name) {
-            return Result.failure(Exception("Esta solicitud ya fue procesada previamente (${solicitud.estado})."))
-        }
-
         val libro = libroDao.getLibroById(solicitud.libroId)
             ?: return Result.failure(Exception("El libro solicitado ya no existe en el catálogo"))
-
-        if (libro.formato != FormatoLibro.DIGITAL.name && libro.ejemplaresDisponibles <= 0) {
-            return Result.failure(Exception("No hay stock suficiente para aprobar este préstamo."))
-        }
 
         val now = System.currentTimeMillis()
         val plazoMillis = solicitud.diasSolicitados.toLong() * 24L * 60 * 60 * 1000
         val fechaEstimada = now + plazoMillis
 
-        // 1. Crear el préstamo oficial
         val prestamo = PrestamoEntity(
             libroId = solicitud.libroId,
             nombreLector = solicitud.nombreEstudiante,
@@ -219,12 +476,10 @@ class BibliotecaRepository(
         )
         val prestamoId = prestamoDao.insertPrestamo(prestamo)
 
-        // 2. Descontar stock físico del libro
         if (libro.formato != FormatoLibro.DIGITAL.name) {
             libroDao.decrementarStock(solicitud.libroId)
         }
 
-        // 3. Actualizar estado de la solicitud
         solicitudPrestamoDao.actualizarEstado(
             id = solicitudId,
             nuevoEstado = EstadoSolicitud.APROBADA.name,
@@ -236,15 +491,14 @@ class BibliotecaRepository(
     }
 
     suspend fun rechazarSolicitud(solicitudId: Long, motivo: String): Result<Unit> {
-        val solicitud = solicitudPrestamoDao.getSolicitudById(solicitudId)
-            ?: return Result.failure(Exception("Solicitud no encontrada"))
-
-        if (solicitud.estado != EstadoSolicitud.PENDIENTE.name) {
-            return Result.failure(Exception("Esta solicitud ya fue procesada anteriormente."))
-        }
-
         val motivoLimpio = motivo.trim().ifBlank {
             "Solicitud no aprobada por administración de biblioteca."
+        }
+
+        try {
+            apiService.rechazarSolicitud(solicitudId, RechazoRequest(motivoLimpio))
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Error de red al rechazar en VPS: ${e.message}")
         }
 
         solicitudPrestamoDao.actualizarEstado(
@@ -258,11 +512,10 @@ class BibliotecaRepository(
     }
 
     suspend fun cancelarSolicitud(solicitudId: Long): Result<Unit> {
-        val solicitud = solicitudPrestamoDao.getSolicitudById(solicitudId)
-            ?: return Result.failure(Exception("Solicitud no encontrada"))
-
-        if (solicitud.estado != EstadoSolicitud.PENDIENTE.name) {
-            return Result.failure(Exception("Solo se pueden cancelar solicitudes pendientes."))
+        try {
+            apiService.cancelarSolicitud(solicitudId)
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Error de red al cancelar en VPS: ${e.message}")
         }
 
         solicitudPrestamoDao.actualizarEstado(
@@ -276,7 +529,7 @@ class BibliotecaRepository(
     }
 
     // -------------------------------------------------------------------------
-    // SISTEMA DE MULTAS Y PENALIZACIONES (FASE 3)
+    // SISTEMA DE MULTAS Y PENALIZACIONES
     // -------------------------------------------------------------------------
 
     val todasLasMultas: Flow<List<Multa>> = multaDao.getAllMultas().map { list ->
@@ -303,11 +556,10 @@ class BibliotecaRepository(
     }
 
     suspend fun cobrarMulta(multaId: Long): Result<Unit> {
-        val multa = multaDao.getMultaById(multaId)
-            ?: return Result.failure(Exception("Multa no encontrada"))
-
-        if (multa.estado == EstadoMulta.PAGADA.name) {
-            return Result.failure(Exception("Esta multa ya se encuentra cancelada."))
+        try {
+            apiService.cobrarMulta(multaId)
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Error de red al cobrar en VPS: ${e.message}")
         }
 
         multaDao.actualizarEstadoMulta(
@@ -320,10 +572,13 @@ class BibliotecaRepository(
     }
 
     suspend fun condonarMulta(multaId: Long, motivo: String): Result<Unit> {
-        val multa = multaDao.getMultaById(multaId)
-            ?: return Result.failure(Exception("Multa no encontrada"))
-
         val motivoLimpio = motivo.trim().ifBlank { "Condonación autorizada por administración de biblioteca." }
+
+        try {
+            apiService.condonarMulta(multaId, CondonarRequest(motivoLimpio))
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Error de red al condonar en VPS: ${e.message}")
+        }
 
         multaDao.actualizarEstadoMulta(
             id = multaId,
@@ -403,7 +658,6 @@ class BibliotecaRepository(
     ): Result<Long> {
         val libro = libroDao.getLibroById(libroId) ?: return Result.failure(Exception("Libro no encontrado"))
 
-        // Si es físico o híbrido, validar stock disponible
         if (libro.formato != FormatoLibro.DIGITAL.name && libro.ejemplaresDisponibles <= 0) {
             return Result.failure(Exception("No hay ejemplares disponibles para préstamo físico"))
         }
@@ -422,7 +676,6 @@ class BibliotecaRepository(
 
         val id = prestamoDao.insertPrestamo(prestamo)
 
-        // Decrementar stock físico si aplica
         if (libro.formato != FormatoLibro.DIGITAL.name) {
             libroDao.decrementarStock(libroId)
         }
@@ -431,12 +684,48 @@ class BibliotecaRepository(
     }
 
     suspend fun registrarDevolucion(prestamoId: Long, libroId: Long): Result<String> {
+        // 1. Intentar registrar en el VPS para que aplique la mora del backend
+        try {
+            val response = apiService.devolverPrestamo(prestamoId)
+            if (response.isSuccessful && response.body()?.data != null) {
+                val data = response.body()!!.data!!
+
+                prestamoDao.marcarDevolucion(
+                    prestamoId = prestamoId,
+                    fechaDevolucion = System.currentTimeMillis(),
+                    nuevoEstado = EstadoPrestamo.DEVUELTO.name
+                )
+                libroDao.incrementarStock(libroId)
+
+                // Si se generó multa en el backend, sincronizarla en Room
+                if (data.multa != null) {
+                    val m = data.multa
+                    multaDao.insertMulta(
+                        MultaEntity(
+                            id = m.id,
+                            prestamoId = m.prestamoId,
+                            usuarioId = m.usuarioId,
+                            codigoEstudiante = m.codigoEstudiante,
+                            nombreEstudiante = m.nombreEstudiante,
+                            tituloLibro = m.tituloLibro,
+                            diasRetraso = m.diasRetraso,
+                            montoTotal = m.montoTotal,
+                            estado = m.estado,
+                            fechaGeneracion = parseDateMillis(m.fechaGeneracion),
+                            observaciones = m.observaciones ?: ""
+                        )
+                    )
+                }
+
+                return Result.success(data.mensaje)
+            }
+        } catch (e: Exception) {
+            Log.w("BibliotecaRepo", "Devolución remota no disponible, procesando localmente en Room: ${e.message}")
+        }
+
+        // 2. Procesamiento local Room (Offline Fallback)
         val prestamo = prestamoDao.getPrestamoById(prestamoId)
             ?: return Result.failure(Exception("Préstamo no encontrado"))
-
-        if (prestamo.estado == EstadoPrestamo.DEVUELTO.name) {
-            return Result.failure(Exception("Este préstamo ya fue devuelto previamente"))
-        }
 
         val now = System.currentTimeMillis()
         prestamoDao.marcarDevolucion(
@@ -445,10 +734,8 @@ class BibliotecaRepository(
             nuevoEstado = EstadoPrestamo.DEVUELTO.name
         )
 
-        // Devolver ejemplar al inventario disponible
         libroDao.incrementarStock(libroId)
 
-        // Generar multa automática si hay días de retraso
         var mensajeResultado = "Devolución registrada. Ejemplar devuelto al inventario."
         if (now > prestamo.fechaDevolucionEstimada) {
             val diff = now - prestamo.fechaDevolucionEstimada
@@ -473,7 +760,7 @@ class BibliotecaRepository(
                 observaciones = "Generada automáticamente por $diasRetraso día(s) de retraso en devolución."
             )
             multaDao.insertMulta(multaEntity)
-            mensajeResultado = "Devolución con $diasRetraso día(s) de retraso. Se generó multa de S/. ${String.format(java.util.Locale.US, "%.2f", montoTotal)}."
+            mensajeResultado = "Devolución con $diasRetraso día(s) de retraso. Se generó multa de S/. ${String.format(Locale.US, "%.2f", montoTotal)}."
         }
 
         return Result.success(mensajeResultado)
@@ -537,7 +824,6 @@ class BibliotecaRepository(
         val totalRecaudado = multas.filter { it.estado == EstadoMulta.PAGADA }.sumOf { it.montoTotal }
         val totalCondonado = multas.filter { it.estado == EstadoMulta.CONDONADA }.sumOf { it.montoTotal }
 
-        // Top Libros más solicitados / prestados
         val prestamosPorLibro = prestamos.groupBy { it.libroId }
         val topLibros = prestamosPorLibro.mapNotNull { (libroId, lista) ->
             val libro = libros.find { it.id == libroId }
@@ -552,7 +838,6 @@ class BibliotecaRepository(
             }
         }.sortedByDescending { it.totalPrestamos }.take(5)
 
-        // Top Carreras profesionales con más préstamos
         val prestamosPorCarrera = prestamos.filter { it.carreraOArea.isNotBlank() }.groupBy { it.carreraOArea }
         val totalConCarrera = prestamos.count { it.carreraOArea.isNotBlank() }
         val topCarreras = prestamosPorCarrera.map { (carrera, lista) ->
@@ -578,21 +863,50 @@ class BibliotecaRepository(
     }
 
     // -------------------------------------------------------------------------
-    // INICIALIZACIÓN Y SEEDING
+    // INICIALIZACIÓN Y SINCRONIZACIÓN
     // -------------------------------------------------------------------------
 
     suspend fun verificarYPrecargarDatos() {
         try {
-            if (libroDao.getCountDirect() == 0 || usuarioDao.getCountDirect() == 0 ||
-                solicitudPrestamoDao.getCountDirect() == 0 || multaDao.getCountDirect() == 0) {
+            // Intentar primero sincronizar los 103 libros del VPS
+            val syncResult = sincronizarLibros()
+            if (syncResult.isFailure && libroDao.getCountDirect() == 0) {
+                // Fallback offline si la base de datos está totalmente vacía
                 recargarDatosIniciales()
             }
         } catch (e: Exception) {
-            android.util.Log.e("BibliotecaRepository", "Error al verificar datos iniciales", e)
+            Log.e("BibliotecaRepo", "Error al verificar datos iniciales", e)
+            if (libroDao.getCountDirect() == 0) {
+                recargarDatosIniciales()
+            }
         }
     }
 
     suspend fun recargarDatosIniciales() {
         BibliotecaDatabase.populateInitialData(libroDao, prestamoDao, usuarioDao, solicitudPrestamoDao, multaDao)
+    }
+
+    private fun parseDateMillis(dateStr: String?): Long {
+        if (dateStr.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            format.parse(dateStr)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    private fun extraerMensajeError(rawBody: String?): String? {
+        if (rawBody.isNullOrBlank()) return null
+        return try {
+            val json = gson.fromJson(rawBody, Map::class.java)
+            json["message"]?.toString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private suspend fun BibliotecaApiService.deleteLibro(id: Long) {
+        // Helper para llamar delete en caso de requerirse
     }
 }

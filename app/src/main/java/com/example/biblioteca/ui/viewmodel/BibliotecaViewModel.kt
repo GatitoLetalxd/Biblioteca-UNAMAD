@@ -36,6 +36,18 @@ data class LoginUiState(
     val passwordVisible: Boolean = false
 )
 
+data class RegistroUiState(
+    val codigo: String = "",
+    val password: String = "",
+    val nombre: String = "",
+    val apellido: String = "",
+    val carrera: String = "Ingeniería de Sistemas e Informática",
+    val telefono: String = "",
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val passwordVisible: Boolean = false
+)
+
 data class CatalogoUiState(
     val query: String = "",
     val categoriaSeleccionada: String? = null,
@@ -82,6 +94,9 @@ class BibliotecaViewModel(
     private val _loginUiState = MutableStateFlow(LoginUiState())
     val loginUiState: StateFlow<LoginUiState> = _loginUiState.asStateFlow()
 
+    private val _registroUiState = MutableStateFlow(RegistroUiState())
+    val registroUiState: StateFlow<RegistroUiState> = _registroUiState.asStateFlow()
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             repository.verificarYPrecargarDatos()
@@ -101,6 +116,105 @@ class BibliotecaViewModel(
 
     fun onTogglePasswordVisibility() {
         _loginUiState.update { it.copy(passwordVisible = !it.passwordVisible) }
+    }
+
+    // Handlers para el formulario de autoregistro de estudiantes
+    fun onRegistroCodigoChange(newCodigo: String) {
+        // Solo permitir números y máximo 8 dígitos
+        val filtered = newCodigo.filter { it.isDigit() }.take(8)
+        _registroUiState.update { it.copy(codigo = filtered, error = null) }
+    }
+
+    fun onRegistroPasswordChange(newPassword: String) {
+        _registroUiState.update { it.copy(password = newPassword, error = null) }
+    }
+
+    fun onRegistroNombreChange(newNombre: String) {
+        _registroUiState.update { it.copy(nombre = newNombre, error = null) }
+    }
+
+    fun onRegistroApellidoChange(newApellido: String) {
+        _registroUiState.update { it.copy(apellido = newApellido, error = null) }
+    }
+
+    fun onRegistroCarreraChange(newCarrera: String) {
+        _registroUiState.update { it.copy(carrera = newCarrera, error = null) }
+    }
+
+    fun onRegistroTelefonoChange(newTelefono: String) {
+        val filtered = newTelefono.filter { it.isDigit() }.take(15)
+        _registroUiState.update { it.copy(telefono = filtered, error = null) }
+    }
+
+    fun onToggleRegistroPasswordVisibility() {
+        _registroUiState.update { it.copy(passwordVisible = !it.passwordVisible) }
+    }
+
+    fun registrarEstudiante(onSuccess: () -> Unit) {
+        val state = _registroUiState.value
+        if (state.codigo.length != 8) {
+            _registroUiState.update { it.copy(error = "El código de estudiante debe tener exactamente 8 dígitos numéricos") }
+            return
+        }
+        if (state.password.length < 6) {
+            _registroUiState.update { it.copy(error = "La contraseña debe tener al menos 6 caracteres") }
+            return
+        }
+        if (state.nombre.isBlank()) {
+            _registroUiState.update { it.copy(error = "Por favor ingresa tu primer nombre") }
+            return
+        }
+        if (state.apellido.isBlank()) {
+            _registroUiState.update { it.copy(error = "Por favor ingresa tu primer apellido") }
+            return
+        }
+        if (state.telefono.isBlank()) {
+            _registroUiState.update { it.copy(error = "Por favor ingresa tu número de teléfono de contacto") }
+            return
+        }
+
+        viewModelScope.launch {
+            _registroUiState.update { it.copy(isLoading = true, error = null) }
+            val result = repository.registrarEstudiante(
+                codigo = state.codigo,
+                password = state.password,
+                nombre = state.nombre,
+                apellido = state.apellido,
+                carrera = state.carrera,
+                telefono = state.telefono
+            )
+            result.fold(
+                onSuccess = { usuario ->
+                    _usuarioActual.value = usuario
+                    _registroUiState.value = RegistroUiState()
+                    _mensajeNotificacion.value = "¡Bienvenido, ${usuario.nombreCompleto}! Cuenta creada exitosamente."
+                    onSuccess()
+                },
+                onFailure = { error ->
+                    _registroUiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.message ?: "No se pudo registrar la cuenta"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun sincronizarConServidor() {
+        viewModelScope.launch {
+            _mensajeNotificacion.value = "Sincronizando catálogo con el servidor..."
+            val result = repository.sincronizarLibros()
+            result.fold(
+                onSuccess = { count ->
+                    _mensajeNotificacion.value = "Sincronización completa: $count libros actualizados."
+                },
+                onFailure = { error ->
+                    _mensajeNotificacion.value = "Sincronización offline: usando caché local."
+                }
+            )
+        }
     }
 
     fun iniciarSesion() {
@@ -142,10 +256,10 @@ class BibliotecaViewModel(
     fun iniciarSesionRapida(rol: RolUsuario) {
         when (rol) {
             RolUsuario.ESTUDIANTE -> {
-                iniciarSesionConCredenciales("2023-04510", "alumno123")
+                iniciarSesionConCredenciales("20230451", "alumno123")
             }
             RolUsuario.BIBLIOTECARIO -> {
-                iniciarSesionConCredenciales("BIBLIO-01", "admin123")
+                iniciarSesionConCredenciales("BIBLIO-01", "biblio123")
             }
         }
     }

@@ -46,6 +46,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -75,6 +76,7 @@ import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 @Composable
 fun LoginScreen(
     viewModel: BibliotecaViewModel,
+    onNavigateToRegistro: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val loginState by viewModel.loginUiState.collectAsState()
@@ -293,6 +295,20 @@ fun LoginScreen(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    TextButton(
+                        onClick = onNavigateToRegistro,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "¿Eres nuevo estudiante? Regístrate aquí",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
@@ -348,7 +364,7 @@ fun LoginScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Jhordy Pérez (2023-04510) • Ing. Sistemas",
+                                text = "Jhordy Pérez (20230451) • Ing. Sistemas",
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -378,7 +394,7 @@ fun LoginScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Prof. Ronald Vásquez (BIBLIO-01) • Dirección",
+                                text = "Carlos Gutiérrez (BIBLIO-01) • Ventanilla",
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -554,10 +554,10 @@ fun DigitalViewerDialog(
             .trim()
         val fileName = "$cleanTitle.pdf"
 
-        val downloadUrl = if (url.isNotBlank() && url.startsWith("http", ignoreCase = true)) {
-            url
-        } else {
-            "https://raw.githubusercontent.com/mozilla/pdf.js/master/examples/learning/helloworld.pdf"
+        val downloadUrl = when {
+            url.isNotBlank() && url.startsWith("http", ignoreCase = true) -> url
+            url.isNotBlank() && url.startsWith("/") -> "https://biblioteca.moondev.online$url"
+            else -> "https://biblioteca.moondev.online/storage/libros/01_lit_Prohibido_Enamorarse.pdf"
         }
 
         try {

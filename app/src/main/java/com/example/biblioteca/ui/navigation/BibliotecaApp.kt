@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -71,6 +72,7 @@ import com.example.biblioteca.ui.screens.LoginScreen
 import com.example.biblioteca.ui.screens.PanelInventarioDatabaseScreen
 import com.example.biblioteca.ui.screens.PerfilEstudianteScreen
 import com.example.biblioteca.ui.screens.PrestamosScreen
+import com.example.biblioteca.ui.screens.RegistroEstudianteScreen
 import com.example.biblioteca.ui.theme.AmberAccent
 import com.example.biblioteca.ui.theme.UnamadGreenPrimary
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
@@ -128,9 +130,23 @@ fun BibliotecaApp(
         }
     }
 
-    // SI NO HAY USUARIO AUTENTICADO -> MOSTRAR PANTALLA DE LOGIN
+    var showRegistroScreen by remember { mutableStateOf(false) }
+
+    // SI NO HAY USUARIO AUTENTICADO -> MOSTRAR PANTALLA DE LOGIN O REGISTRO
     if (usuarioActual == null) {
-        LoginScreen(viewModel = viewModel, modifier = modifier)
+        if (showRegistroScreen) {
+            RegistroEstudianteScreen(
+                viewModel = viewModel,
+                onNavigateToLogin = { showRegistroScreen = false },
+                modifier = modifier
+            )
+        } else {
+            LoginScreen(
+                viewModel = viewModel,
+                onNavigateToRegistro = { showRegistroScreen = true },
+                modifier = modifier
+            )
+        }
         return
     }
 
@@ -224,6 +240,15 @@ fun BibliotecaApp(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+
+                    // Botón para sincronizar catálogo con el servidor VPS
+                    IconButton(onClick = { viewModel.sincronizarConServidor() }) {
+                        Icon(
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = "Sincronizar con Servidor",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
 
                     // Botón para Cerrar Sesión
