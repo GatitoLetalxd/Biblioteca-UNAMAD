@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -68,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -128,6 +130,9 @@ fun StatusBadge(
 @Composable
 fun BookCoverImage(
     portadaUrl: String,
+    titulo: String = "",
+    autor: String = "",
+    categoria: String = "",
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop
 ) {
@@ -143,32 +148,127 @@ fun BookCoverImage(
     if (drawableResId != 0) {
         Image(
             painter = painterResource(id = drawableResId),
-            contentDescription = null,
+            contentDescription = titulo.ifBlank { null },
             contentScale = contentScale,
             modifier = modifier
         )
     } else if (portadaUrl.startsWith("http://") || portadaUrl.startsWith("https://")) {
         AsyncImage(
             model = portadaUrl,
-            contentDescription = null,
+            contentDescription = titulo.ifBlank { null },
             contentScale = contentScale,
             modifier = modifier,
             error = painterResource(id = R.drawable.logo_unamad),
             placeholder = painterResource(id = R.drawable.logo_unamad)
         )
     } else {
+        // Carátula Editorial Académica Dinámica y Elegante (estilo Kindle / Calibre)
+        val coverGradient = remember(categoria, titulo) {
+            when {
+                categoria.contains("Sistemas", true) || categoria.contains("Inteligencia", true) || categoria.contains("Computación", true) -> {
+                    listOf(Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF0284C7)) // Azul tecnológico
+                }
+                categoria.contains("Forestal", true) || categoria.contains("Ambiental", true) || categoria.contains("Biodiversidad", true) || categoria.contains("Amazonía", true) -> {
+                    listOf(Color(0xFF022C22), Color(0xFF065F46), Color(0xFF059669)) // Verde amazónico profundo
+                }
+                categoria.contains("Literatura", true) || categoria.contains("Filosofía", true) -> {
+                    listOf(Color(0xFF4C0519), Color(0xFF881337), Color(0xFFBE123C)) // Borgoña / Vino editorial
+                }
+                categoria.contains("Cuentos", true) || categoria.contains("Narrativa", true) -> {
+                    listOf(Color(0xFF451A03), Color(0xFF92400E), Color(0xFFD97706)) // Ámbar / Cuero clásico
+                }
+                else -> {
+                    listOf(Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF4F46E5)) // Índigo académico
+                }
+            }
+        }
+
         Box(
-            contentAlignment = Alignment.Center,
             modifier = modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(8.dp)
+                .background(Brush.verticalGradient(coverGradient))
+                .border(1.dp, Color.White.copy(alpha = 0.15f))
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_unamad),
-                contentDescription = "UNAMAD",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.size(52.dp)
+            // Lomo del libro (franja sombreada a la izquierda)
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.28f))
             )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 7.dp, end = 5.dp, top = 5.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Sello superior UNAMAD
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_unamad),
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "UNAMAD",
+                        color = Color(0xFFFDE68A),
+                        fontSize = 7.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                // Título real del libro
+                Text(
+                    text = if (titulo.isNotBlank()) titulo else "Libro Digital",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 11.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 2.dp)
+                )
+
+                // Autor y sello PDF al pie
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (autor.isNotBlank()) {
+                        Text(
+                            text = autor.replace("por ", "").replace("Autor / Colección", "").trim(),
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 7.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(3.dp)
+                    ) {
+                        Text(
+                            text = "PDF DIGITAL",
+                            color = Color(0xFF67E8F9),
+                            fontSize = 6.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -273,6 +373,9 @@ fun BookCard(
                 ) {
                     BookCoverImage(
                         portadaUrl = libro.portadaUrl,
+                        titulo = libro.titulo,
+                        autor = libro.autor,
+                        categoria = libro.categoria,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

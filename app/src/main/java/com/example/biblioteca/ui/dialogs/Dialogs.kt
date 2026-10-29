@@ -850,6 +850,9 @@ fun DigitalViewerDialog(
                         ) {
                             BookCoverImage(
                                 portadaUrl = libro.portadaUrl,
+                                titulo = libro.titulo,
+                                autor = libro.autor,
+                                categoria = libro.categoria,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

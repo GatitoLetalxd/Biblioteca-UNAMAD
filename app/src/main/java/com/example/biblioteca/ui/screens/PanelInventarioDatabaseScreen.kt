@@ -385,7 +385,13 @@ fun DatabaseBookRowCard(
                         .height(66.dp)
                         .clip(RoundedCornerShape(6.dp))
                 ) {
-                    BookCoverImage(portadaUrl = libro.portadaUrl, modifier = Modifier.fillMaxSize())
+                    BookCoverImage(
+                        portadaUrl = libro.portadaUrl,
+                        titulo = libro.titulo,
+                        autor = libro.autor,
+                        categoria = libro.categoria,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

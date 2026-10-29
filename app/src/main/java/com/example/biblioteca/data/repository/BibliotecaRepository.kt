@@ -284,14 +284,7 @@ class BibliotecaRepository(
             5L -> "portada_tanenbaum"
             6L -> "portada_biodiversidad"
             7L -> "portada_sampieri"
-            else -> {
-                when {
-                    categoria.contains("Sistemas", true) || categoria.contains("Inteligencia", true) -> "portada_lafore"
-                    categoria.contains("Forestal", true) || categoria.contains("Ambiental", true) -> "portada_ecosistemas"
-                    categoria.contains("Cuentos", true) || categoria.contains("Literatura", true) -> "portada_marquez"
-                    else -> "portada_sampieri"
-                }
-            }
+            else -> "" // Portada editorial dinámica con título y autor reales
         }
     }
 
