@@ -1,6 +1,5 @@
 package com.example.biblioteca.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,13 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -34,27 +29,30 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.biblioteca.ui.components.EmptyStateView
 import com.example.biblioteca.model.EstadoSolicitud
 import com.example.biblioteca.model.SolicitudPrestamo
 import com.example.biblioteca.ui.theme.AmberAccent
@@ -62,130 +60,129 @@ import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
 import com.example.biblioteca.ui.theme.StatusOutBg
 import com.example.biblioteca.ui.theme.StatusOutText
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionSolicitudesScreen(
     viewModel: BibliotecaViewModel,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.solicitudesUiState.collectAsState()
+    val isSincronizando by viewModel.isSincronizando.collectAsState()
+    val haptic = LocalHapticFeedback.current
 
-    Column(
+    PullToRefreshBox(
+        isRefreshing = isSincronizando,
+        onRefresh = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.sincronizarConServidor()
+        },
         modifier = modifier.fillMaxSize()
     ) {
-        // Pestañas (Pendientes vs Historial)
-        PrimaryTabRow(
-            selectedTabIndex = uiState.pestanaSeleccionada,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = UnamadGreenPrimary
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Tab(
-                selected = uiState.pestanaSeleccionada == 0,
-                onClick = { viewModel.onSolicitudesPestanaChange(0) },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Pendientes (${uiState.totalPendientes})",
-                            fontWeight = if (uiState.pestanaSeleccionada == 0) FontWeight.Bold else FontWeight.Normal
-                        )
+            // Pestañas (Pendientes vs Historial)
+            PrimaryTabRow(
+                selectedTabIndex = uiState.pestanaSeleccionada,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Tab(
+                    selected = uiState.pestanaSeleccionada == 0,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.onSolicitudesPestanaChange(0)
+                    },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Pendientes (${uiState.totalPendientes})",
+                                fontWeight = if (uiState.pestanaSeleccionada == 0) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     }
-                }
-            )
-            Tab(
-                selected = uiState.pestanaSeleccionada == 1,
-                onClick = { viewModel.onSolicitudesPestanaChange(1) },
-                text = {
-                    Text(
-                        text = "Historial (${uiState.historialSolicitudes.size})",
-                        fontWeight = if (uiState.pestanaSeleccionada == 1) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            )
-        }
-
-        // Barra de Búsqueda
-        OutlinedTextField(
-            value = uiState.query,
-            onValueChange = { viewModel.onSolicitudesQueryChange(it) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Buscar por estudiante, código o libro...") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Buscar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            },
-            trailingIcon = {
-                if (uiState.query.isNotBlank()) {
-                    IconButton(onClick = { viewModel.onSolicitudesQueryChange("") }) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Limpiar",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                Tab(
+                    selected = uiState.pestanaSeleccionada == 1,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.onSolicitudesPestanaChange(1)
+                    },
+                    text = {
+                        Text(
+                            text = "Historial (${uiState.historialSolicitudes.size})",
+                            fontWeight = if (uiState.pestanaSeleccionada == 1) FontWeight.Bold else FontWeight.Normal
                         )
                     }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(14.dp)
-        )
-
-        val listaMostrar = if (uiState.pestanaSeleccionada == 0) uiState.solicitudesPendientes else uiState.historialSolicitudes
-
-        if (listaMostrar.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Assignment,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = if (uiState.pestanaSeleccionada == 0) "No hay solicitudes pendientes" else "Historial de solicitudes vacío",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (uiState.pestanaSeleccionada == 0)
-                            "Cuando los estudiantes soliciten libros físicos desde su app, aparecerán aquí para ser autorizados."
-                        else
-                            "Aquí se guardará el registro de solicitudes aprobadas y rechazadas.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(listaMostrar, key = { it.id }) { solicitud ->
-                    SolicitudLibrarianCard(
-                        solicitud = solicitud,
-                        onAprobar = { viewModel.aprobarSolicitud(solicitud) },
-                        onRechazar = { viewModel.abrirDialogoRechazo(solicitud) }
+
+            // Barra de Búsqueda
+            OutlinedTextField(
+                value = uiState.query,
+                onValueChange = { viewModel.onSolicitudesQueryChange(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Buscar por estudiante, código o libro...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Buscar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                },
+                trailingIcon = {
+                    if (uiState.query.isNotBlank()) {
+                        IconButton(onClick = { viewModel.onSolicitudesQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Limpiar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
+            )
+
+            val listaMostrar = if (uiState.pestanaSeleccionada == 0) uiState.solicitudesPendientes else uiState.historialSolicitudes
+
+            if (listaMostrar.isEmpty()) {
+                EmptyStateView(
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    title = if (uiState.pestanaSeleccionada == 0) "No hay solicitudes pendientes" else "Historial de solicitudes vacío",
+                    subtitle = if (uiState.pestanaSeleccionada == 0)
+                        "Cuando los estudiantes soliciten libros físicos desde su app, aparecerán aquí para ser autorizados."
+                    else
+                        "Aquí se guardará el registro de solicitudes aprobadas y rechazadas."
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(listaMostrar, key = { it.id }) { solicitud ->
+                        SolicitudLibrarianCard(
+                            solicitud = solicitud,
+                            onAprobar = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.aprobarSolicitud(solicitud)
+                            },
+                            onRechazar = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.abrirDialogoRechazo(solicitud)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -335,7 +332,7 @@ fun SolicitudLibrarianCard(
             if (solicitud.notas.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "📝 Nota del alumno: \"${solicitud.notas}\"",
+                    text = "Nota del alumno: \"${solicitud.notas}\"",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -396,7 +393,7 @@ fun SolicitudLibrarianCard(
                     Button(
                         onClick = onAprobar,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         ),
                         shape = RoundedCornerShape(10.dp),

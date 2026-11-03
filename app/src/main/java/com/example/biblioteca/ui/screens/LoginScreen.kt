@@ -21,14 +21,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -37,8 +34,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -69,8 +63,8 @@ import androidx.compose.ui.unit.sp
 import com.example.biblioteca.R
 import com.example.biblioteca.model.RolUsuario
 import com.example.biblioteca.ui.theme.AmberAccent
-import com.example.biblioteca.ui.theme.UnamadGreenDark
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 
 @Composable
@@ -88,8 +82,7 @@ fun LoginScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        UnamadGreenDark,
-                        UnamadGreenPrimary,
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                         MaterialTheme.colorScheme.background
                     ),
                     startY = 0f,
@@ -110,18 +103,18 @@ fun LoginScreen(
             // Cabecera Institucional UNAMAD con Logo Oficial
             Surface(
                 shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 6.dp,
                 modifier = Modifier.size(92.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo_unamad),
-                        contentDescription = "Escudo Oficial UNAMAD",
+                        painter = painterResource(id = R.drawable.logo_biblioteca),
+                        contentDescription = "Logo Oficial Biblioteca UNAMAD",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .size(72.dp)
-                            .padding(4.dp)
+                            .padding(6.dp)
                     )
                 }
             }
@@ -132,14 +125,14 @@ fun LoginScreen(
                 text = "BIBLIOTECA CENTRAL",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 letterSpacing = 1.sp
             )
 
             Text(
                 text = "Universidad Nacional Amazónica de Madre de Dios",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.9f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
@@ -180,21 +173,21 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFFFEF2F2))
-                                .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                                .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ErrorOutline,
                                 contentDescription = null,
-                                tint = Color(0xFFDC2626),
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = loginState.error ?: "",
-                                color = Color(0xFF991B1B),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -212,7 +205,7 @@ fun LoginScreen(
                             Icon(
                                 imageVector = Icons.Default.Badge,
                                 contentDescription = null,
-                                tint = UnamadGreenPrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         singleLine = true,
@@ -236,7 +229,7 @@ fun LoginScreen(
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = UnamadGreenPrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         trailingIcon = {
@@ -274,8 +267,8 @@ fun LoginScreen(
                         enabled = !loginState.isLoading,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -327,12 +320,24 @@ fun LoginScreen(
                     modifier = Modifier.padding(18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "⚡ Acceso Rápido de Prueba (Demo)",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = AmberAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Acceso Rápido de Prueba (Demo)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Text(
                         text = "Toca un rol para ingresar directamente sin escribir:",
                         style = MaterialTheme.typography.bodySmall,
@@ -352,7 +357,7 @@ fun LoginScreen(
                         Icon(
                             imageVector = Icons.Default.School,
                             contentDescription = null,
-                            tint = UnamadGreenPrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))

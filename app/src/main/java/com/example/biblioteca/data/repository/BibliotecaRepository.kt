@@ -32,12 +32,13 @@ import com.example.biblioteca.model.ReporteInstitucional
 import com.example.biblioteca.model.RolUsuario
 import com.example.biblioteca.model.SolicitudPrestamo
 import com.example.biblioteca.model.Usuario
+import com.example.biblioteca.ui.theme.ThemeMode
+import com.example.biblioteca.util.PdfUrlResolver
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 class BibliotecaRepository(
@@ -241,12 +242,12 @@ class BibliotecaRepository(
             if (response.isSuccessful && response.body()?.data?.libros != null) {
                 val remoteBooks = response.body()!!.data!!.libros
                 val entities = remoteBooks.map { dto ->
-                    // Resolver URL absoluta para streaming/descarga
-                    val pdfUrl = if (dto.archivoUrl.startsWith("http")) {
-                        dto.archivoUrl
-                    } else {
-                        "https://biblioteca.moondev.online${dto.archivoUrl}"
-                    }
+                    // Resolver y sanear URL para streaming/descarga evitando inconsistencias del seeder
+                    val pdfUrl = PdfUrlResolver.resolverUrlPdf(
+                        rawUrl = dto.archivoUrl,
+                        categoria = dto.categoria,
+                        titulo = dto.titulo
+                    )
 
                     LibroEntity(
                         id = dto.id,
@@ -266,7 +267,7 @@ class BibliotecaRepository(
                 }
 
                 libroDao.insertAll(entities)
-                Log.d("BibliotecaRepo", "✓ Sincronizados ${entities.size} libros desde el VPS hacia Room")
+                Log.d("BibliotecaRepo", "Sincronizados ${entities.size} libros desde el VPS hacia Room")
                 return Result.success(entities.size)
             }
         } catch (e: Exception) {
@@ -881,12 +882,24 @@ class BibliotecaRepository(
 
     private fun parseDateMillis(dateStr: String?): Long {
         if (dateStr.isNullOrBlank()) return System.currentTimeMillis()
-        return try {
-            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
-            format.parse(dateStr)?.time ?: System.currentTimeMillis()
-        } catch (e: Exception) {
-            System.currentTimeMillis()
+        val patterns = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd"
+        )
+        for (pattern in patterns) {
+            try {
+                val format = SimpleDateFormat(pattern, Locale.US).apply {
+                    if (pattern.endsWith("'Z'")) {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }
+                }
+                val date = format.parse(dateStr)
+                if (date != null) return date.time
+            } catch (_: Exception) { }
         }
+        return System.currentTimeMillis()
     }
 
     private fun extraerMensajeError(rawBody: String?): String? {
@@ -899,7 +912,11 @@ class BibliotecaRepository(
         }
     }
 
-    private suspend fun BibliotecaApiService.deleteLibro(id: Long) {
-        // Helper para llamar delete en caso de requerirse
+    fun obtenerThemeMode(): ThemeMode {
+        return sessionManager.obtenerThemeMode()
+    }
+
+    fun guardarThemeMode(mode: ThemeMode) {
+        sessionManager.guardarThemeMode(mode)
     }
 }

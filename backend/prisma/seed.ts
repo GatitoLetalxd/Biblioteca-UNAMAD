@@ -128,10 +128,10 @@ async function main() {
       ejemplaresTotales: 5,
       ejemplaresDisponibles: 4,
       ubicacion: 'Estante A-12',
-      archivoUrl: '/storage/libros/01_lit_Prohibido_Enamorarse.pdf',
-      archivoNombre: '01_lit_Prohibido_Enamorarse.pdf',
-      sha256: '852ea52b0452b98c365d6f42dd0e71fadc084ef27628916c993e78185e3ed66e',
-      tamanoMb: 14.5,
+      archivoUrl: '/storage/libros/77_ing_Patrones_de_diseo.pdf',
+      archivoNombre: '77_ing_Patrones_de_diseo.pdf',
+      sha256: '98d36151e36ff292a188f6385a42095f9d22be4f8b0e77d29bc5e6484e0fb4ba',
+      tamanoMb: 12.4,
       portadaUrl: 'portada_pressman',
       resumen: 'Texto clásico y de referencia fundamental sobre procesos, metodologías ágiles y calidad en desarrollo de software.'
     },
@@ -144,8 +144,8 @@ async function main() {
       ejemplaresTotales: 1,
       ejemplaresDisponibles: 1,
       ubicacion: 'Repositorio Digital',
-      archivoUrl: '/storage/libros/02_lit_Entre_Visillos_Carmen_Martin_Gaite.pdf',
-      archivoNombre: '02_lit_Entre_Visillos_Carmen_Martin_Gaite.pdf',
+      archivoUrl: '/storage/libros/94_amb_La_Red_Oculta_de_la_Vida.pdf',
+      archivoNombre: '94_amb_La_Red_Oculta_de_la_Vida.pdf',
       sha256: '9797fc1440c4ec1a142193b1613a68276161f2c1a8cc61fe718b18fd2e6c1caa',
       tamanoMb: 8.2,
       portadaUrl: 'portada_ecosistemas',
@@ -160,8 +160,8 @@ async function main() {
       ejemplaresTotales: 4,
       ejemplaresDisponibles: 2,
       ubicacion: 'Estante A-08',
-      archivoUrl: '/storage/libros/03_lit_El_Extranjero_Albert_Camus.pdf',
-      archivoNombre: '03_lit_El_Extranjero_Albert_Camus.pdf',
+      archivoUrl: '/storage/libros/24_ing_Algoritmos_Resueltos_Con_Diagramas_De_Flujo_Y.pdf',
+      archivoNombre: '24_ing_Algoritmos_Resueltos_Con_Diagramas_De_Flujo_Y.pdf',
       sha256: '40e5f0ef8b943e9b36e093d691d2eb7bc7e937d713fb88b597595354a7f2b754',
       tamanoMb: 6.8,
       portadaUrl: 'portada_lafore',
@@ -172,7 +172,13 @@ async function main() {
   for (const f of librosFisicos) {
     await prisma.libro.upsert({
       where: { isbn: f.isbn },
-      update: {},
+      update: {
+        archivoUrl: f.archivoUrl,
+        archivoNombre: f.archivoNombre,
+        sha256: f.sha256,
+        tamanoMb: f.tamanoMb,
+        resumen: f.resumen
+      },
       create: f
     });
   }

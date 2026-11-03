@@ -3,10 +3,10 @@ package com.example.biblioteca.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,12 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.biblioteca.ui.components.EmptyStateView
 import com.example.biblioteca.model.EstadoSolicitud
-import com.example.biblioteca.model.Prestamo
 import com.example.biblioteca.model.SolicitudPrestamo
 import com.example.biblioteca.ui.components.LoanCard
 import com.example.biblioteca.ui.components.SwipeableLoanCard
@@ -64,12 +68,13 @@ import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
 import com.example.biblioteca.ui.theme.StatusOutBg
 import com.example.biblioteca.ui.theme.StatusOutText
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrestamosScreen(
     viewModel: BibliotecaViewModel,
@@ -78,17 +83,23 @@ fun PrestamosScreen(
     val uiState by viewModel.prestamosUiState.collectAsState()
     val usuario by viewModel.usuarioActual.collectAsState()
     val misSolicitudes by viewModel.misSolicitudesEstudiante.collectAsState()
+    val isSincronizando by viewModel.isSincronizando.collectAsState()
     val esBibliotecario = usuario?.esBibliotecario == true
+    val haptic = LocalHapticFeedback.current
 
     // Pestaña interna para estudiantes: 0 = Mis Solicitudes, 1 = En Préstamo, 2 = Historial
     var pestanaEstudiante by remember { mutableIntStateOf(0) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         floatingActionButton = {
             if (esBibliotecario) {
                 FloatingActionButton(
-                    onClick = { viewModel.abrirDialogoPrestamo(null) },
-                    containerColor = UnamadGreenPrimary,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.abrirDialogoPrestamo(null)
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -98,17 +109,25 @@ fun PrestamosScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = isSincronizando,
+            onRefresh = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.sincronizarConServidor()
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Pestañas diferenciadas según rol
             if (esBibliotecario) {
                 PrimaryTabRow(
                     selectedTabIndex = uiState.pestanaSeleccionada,
                     containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = UnamadGreenPrimary
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
                         selected = uiState.pestanaSeleccionada == 0,
@@ -135,7 +154,7 @@ fun PrestamosScreen(
                 PrimaryTabRow(
                     selectedTabIndex = pestanaEstudiante,
                     containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = UnamadGreenPrimary
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
                         selected = pestanaEstudiante == 0,
@@ -210,37 +229,11 @@ fun PrestamosScreen(
             // VISTA DEL ESTUDIANTE: Pestaña 0 = Mis Solicitudes
             if (!esBibliotecario && pestanaEstudiante == 0) {
                 if (misSolicitudes.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Assignment,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Sin solicitudes registradas",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Cuando solicites un libro físico desde el Catálogo, podrás ver aquí su estado de aprobación en tiempo real.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
+                    EmptyStateView(
+                        icon = Icons.AutoMirrored.Filled.Assignment,
+                        title = "Sin solicitudes registradas",
+                        subtitle = "Cuando solicites un libro físico desde el Catálogo, podrás ver aquí su estado de aprobación en tiempo real."
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -305,7 +298,7 @@ fun PrestamosScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "💡 Tip: Puedes deslizar una tarjeta hacia la derecha 👉 para registrar la devolución de inmediato.",
+                            text = "Tip: Puedes deslizar una tarjeta hacia la derecha para registrar la devolución de inmediato.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                             fontSize = 11.sp
@@ -315,39 +308,14 @@ fun PrestamosScreen(
                 }
 
                 if (listaMostrar.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AssignmentTurnedIn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No hay libros en este listado",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (esBibliotecario)
-                                    "Presiona el botón (+) para registrar préstamos manuales."
-                                else
-                                    "Tus libros prestados o devueltos se visualizarán aquí.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.AssignmentTurnedIn,
+                        title = "No hay libros en este listado",
+                        subtitle = if (esBibliotecario)
+                            "Presiona el botón (+) para registrar préstamos manuales o autoriza solicitudes pendientes."
+                        else
+                            "Tus libros prestados o devueltos se visualizarán aquí."
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -358,13 +326,17 @@ fun PrestamosScreen(
                             if (esBibliotecario && uiState.pestanaSeleccionada == 0) {
                                 SwipeableLoanCard(
                                     prestamo = prestamo,
-                                    onDevolverClick = { viewModel.registrarDevolucion(prestamo) }
+                                    onDevolverClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.registrarDevolucion(prestamo)
+                                    }
                                 )
                             } else {
                                 LoanCard(
                                     prestamo = prestamo,
                                     onDevolverClick = {
                                         if (esBibliotecario) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             viewModel.registrarDevolucion(prestamo)
                                         }
                                     },
@@ -377,6 +349,7 @@ fun PrestamosScreen(
             }
         }
     }
+}
 }
 
 @Composable
@@ -437,9 +410,9 @@ fun SolicitudStudentCard(
                     Text(
                         text = when (solicitud.estado) {
                             EstadoSolicitud.PENDIENTE -> "⏳ En Revisión"
-                            EstadoSolicitud.APROBADA -> "✅ Aprobada"
-                            EstadoSolicitud.RECHAZADA -> "❌ Rechazada"
-                            EstadoSolicitud.CANCELADA -> "🚫 Cancelada"
+                            EstadoSolicitud.APROBADA -> "Aprobada"
+                            EstadoSolicitud.RECHAZADA -> "Rechazada"
+                            EstadoSolicitud.CANCELADA -> "Cancelada"
                         },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,

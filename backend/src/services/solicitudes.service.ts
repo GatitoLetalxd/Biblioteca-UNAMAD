@@ -41,8 +41,13 @@ export class SolicitudesService {
     const prestamosVencidos = await prisma.prestamo.count({
       where: {
         usuarioId,
-        estado: EstadoPrestamo.ACTIVO,
-        fechaDevolucionEstimada: { lt: now }
+        OR: [
+          { estado: EstadoPrestamo.VENCIDO },
+          {
+            estado: EstadoPrestamo.ACTIVO,
+            fechaDevolucionEstimada: { lt: now }
+          }
+        ]
       }
     });
 

@@ -14,7 +14,8 @@ enum class EstadoPrestamo(val etiqueta: String) {
 
 enum class RolUsuario(val etiqueta: String, val descripcion: String) {
     ESTUDIANTE("Estudiante", "Acceso a catálogo, lectura de PDF y solicitudes de préstamo"),
-    BIBLIOTECARIO("Bibliotecario / Admin", "Gestión total de préstamos, catálogo, solicitudes y métricas")
+    BIBLIOTECARIO("Bibliotecario", "Gestión de préstamos, catálogo, solicitudes y cobranza"),
+    ADMIN("Administrador", "Superusuario institucional con acceso total al sistema y personal")
 }
 
 enum class EstadoSolicitud(val etiqueta: String) {

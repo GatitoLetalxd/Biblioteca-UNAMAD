@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
@@ -36,14 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.biblioteca.model.Libro
 import com.example.biblioteca.model.Usuario
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
 
 @Composable
 fun SolicitarPrestamoDialog(
@@ -62,7 +60,7 @@ fun SolicitarPrestamoDialog(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
-                    tint = UnamadGreenPrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -132,7 +130,7 @@ fun SolicitarPrestamoDialog(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = UnamadGreenPrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -190,21 +188,21 @@ fun SolicitarPrestamoDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF0FDF4), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = UnamadGreenPrimary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Tu solicitud será revisada por el bibliotecario. Podrás ver el estado en tiempo real.",
                         fontSize = 10.sp,
-                        color = Color(0xFF166534)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -213,8 +211,8 @@ fun SolicitarPrestamoDialog(
             Button(
                 onClick = { onConfirmar(libro.id, diasSeleccionados, notas) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = UnamadGreenPrimary,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {

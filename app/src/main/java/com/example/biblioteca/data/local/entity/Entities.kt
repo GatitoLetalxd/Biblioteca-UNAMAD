@@ -134,7 +134,7 @@ data class LibroEntity(
             entity = LibroEntity::class,
             parentColumns = ["id"],
             childColumns = ["libroId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.NO_ACTION
         )
     ],
     indices = [Index(value = ["libroId"])]
@@ -197,7 +197,7 @@ data class PrestamoEntity(
             entity = LibroEntity::class,
             parentColumns = ["id"],
             childColumns = ["libroId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.NO_ACTION
         )
     ],
     indices = [Index(value = ["libroId"]), Index(value = ["codigoEstudiante"])]
@@ -266,7 +266,7 @@ data class SolicitudPrestamoEntity(
             entity = PrestamoEntity::class,
             parentColumns = ["id"],
             childColumns = ["prestamoId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.NO_ACTION
         )
     ],
     indices = [Index(value = ["prestamoId"]), Index(value = ["codigoEstudiante"])]

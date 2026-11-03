@@ -1,7 +1,6 @@
 package com.example.biblioteca.ui.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,44 +19,47 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.biblioteca.R
+import com.example.biblioteca.ui.theme.ThemeMode
 import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
-import com.example.biblioteca.ui.theme.UnamadGreenDark
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.util.Locale
 
@@ -70,6 +72,8 @@ fun PerfilEstudianteScreen(
     val usuario by viewModel.usuarioActual.collectAsState()
     val prestamosState by viewModel.prestamosUiState.collectAsState()
     val misMultasPendientes by viewModel.misMultasPendientesEstudiante.collectAsState()
+    val currentThemeMode by viewModel.themeMode.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val totalActivos = prestamosState.prestamosActivos.size
     val totalDevueltos = prestamosState.historialDevueltos.size
@@ -87,8 +91,9 @@ fun PerfilEstudianteScreen(
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = UnamadGreenPrimary
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -103,21 +108,21 @@ fun PerfilEstudianteScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Image(
-                                    painter = painterResource(id = R.drawable.logo_unamad),
+                                    painter = painterResource(id = R.drawable.logo_biblioteca),
                                     contentDescription = "Logo UNAMAD",
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "CARNET DE BIBLIOTECA",
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -125,7 +130,7 @@ fun PerfilEstudianteScreen(
                     }
 
                     Surface(
-                        color = Color.White.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(50)
                     ) {
                         Row(
@@ -135,13 +140,13 @@ fun PerfilEstudianteScreen(
                             Icon(
                                 imageVector = Icons.Default.VerifiedUser,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Lector Activo",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -157,13 +162,13 @@ fun PerfilEstudianteScreen(
                     // Avatar con Iniciales
                     Surface(
                         shape = CircleShape,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.size(64.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = usuario?.iniciales ?: "UN",
-                                color = UnamadGreenPrimary,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -175,20 +180,20 @@ fun PerfilEstudianteScreen(
                     Column {
                         Text(
                             text = usuario?.nombreCompleto ?: "Estudiante UNAMAD",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Cód: ${usuario?.codigo ?: "---"}",
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = usuario?.carreraOArea ?: "Pregrado",
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             fontSize = 11.sp
                         )
                     }
@@ -270,18 +275,18 @@ fun PerfilEstudianteScreen(
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFEF2F2)
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = null,
-                            tint = Color(0xFFDC2626),
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -290,12 +295,12 @@ fun PerfilEstudianteScreen(
                                 text = "Sanción por Multas: S/. ${String.format(Locale.US, "%.2f", totalDeuda)}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color(0xFF991B1B)
+                                color = MaterialTheme.colorScheme.onErrorContainer
                             )
                             Text(
                                 text = "Tienes ${misMultasPendientes.size} multa(s) pendiente(s) por retraso en devolución.",
                                 fontSize = 11.sp,
-                                color = Color(0xFFB91C1C)
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -306,7 +311,7 @@ fun PerfilEstudianteScreen(
                     misMultasPendientes.forEach { multa ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 3.dp)
@@ -320,42 +325,52 @@ fun PerfilEstudianteScreen(
                                     Text(
                                         text = multa.tituloLibro,
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "${multa.diasRetraso} día(s) de mora • S/. 1.50/día",
                                         fontSize = 10.sp,
-                                        color = Color(0xFF92400E)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
                                     text = "S/. ${String.format(Locale.US, "%.2f", multa.montoTotal)}",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Color(0xFFDC2626)
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "📍 Acércate a la ventanilla de Biblioteca Central para cancelar y reactivar tus solicitudes de préstamo.",
-                        fontSize = 10.sp,
-                        color = Color(0xFF7F1D1D),
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Acércate a la ventanilla de Biblioteca Central para cancelar y reactivar tus solicitudes de préstamo.",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         } else if (totalVencidos > 0) {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFEF3C7)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -364,7 +379,7 @@ fun PerfilEstudianteScreen(
                     Icon(
                         imageVector = Icons.Default.Warning,
                         contentDescription = null,
-                        tint = Color(0xFFB45309),
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -373,12 +388,12 @@ fun PerfilEstudianteScreen(
                             text = "Atención: Tienes $totalVencidos libro(s) vencido(s)",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
-                            color = Color(0xFF92400E)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
                             text = "Devuélvelos lo antes posible para evitar la generación de multas acumulativas (S/. 1.50/día).",
                             fontSize = 11.sp,
-                            color = Color(0xFFB45309)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -496,14 +511,23 @@ fun PerfilEstudianteScreen(
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "📖 Reglamento del Lector Universitario",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoStories,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Reglamento del Lector Universitario",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Text(
                     text = "• Préstamo físico: Plazo estándar de 7 días con opción de devolución anticipada.",
                     fontSize = 11.sp,
@@ -522,11 +546,83 @@ fun PerfilEstudianteScreen(
             }
         }
 
+        // Configuración de Apariencia y Tema Visual
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Apariencia y Tema Visual",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Text(
+                    text = "Elige el modo de visualización preferido con alto contraste optimizado:",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThemeMode.values().forEach { mode ->
+                        val isSelected = currentThemeMode == mode
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.cambiarThemeMode(mode) },
+                            label = {
+                                Text(
+                                    text = when (mode) {
+                                        ThemeMode.SYSTEM -> "Sistema"
+                                        ThemeMode.LIGHT -> "Claro"
+                                        ThemeMode.DARK -> "Oscuro"
+                                    },
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = when (mode) {
+                                        ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                        ThemeMode.LIGHT -> Icons.Default.LightMode
+                                        ThemeMode.DARK -> Icons.Default.DarkMode
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         // Botón Cerrar Sesión
         OutlinedButton(
-            onClick = { viewModel.cerrarSesion() },
+            onClick = { showLogoutDialog = true },
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             ),
@@ -549,5 +645,33 @@ fun PerfilEstudianteScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text(text = "Cerrar Sesión") },
+            text = {
+                Text(
+                    text = "¿Estás seguro de que deseas cerrar sesión de la cuenta ${usuario?.nombreCompleto ?: ""}?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        viewModel.cerrarSesion()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }

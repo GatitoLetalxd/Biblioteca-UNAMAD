@@ -26,4 +26,7 @@ backend/yarn-error.log*
 # HERRAMIENTAS Y AGENTES
 # ---------------------------------------------------------------------
 .opencode/
+.kotlin/
+scratch/
+
 

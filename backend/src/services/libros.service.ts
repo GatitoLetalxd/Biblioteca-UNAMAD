@@ -42,32 +42,40 @@ export class LibrosService {
     const { search, categoria, formato, soloDisponibles, page = 1, limit = 20 } = filtros;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const conditions: any[] = [];
 
     if (search && search.trim().length > 0) {
       const q = search.trim();
-      where.OR = [
-        { titulo: { contains: q, mode: 'insensitive' } },
-        { autor: { contains: q, mode: 'insensitive' } },
-        { categoria: { contains: q, mode: 'insensitive' } },
-        { isbn: { contains: q, mode: 'insensitive' } }
-      ];
+      conditions.push({
+        OR: [
+          { titulo: { contains: q, mode: 'insensitive' } },
+          { autor: { contains: q, mode: 'insensitive' } },
+          { categoria: { contains: q, mode: 'insensitive' } },
+          { isbn: { contains: q, mode: 'insensitive' } }
+        ]
+      });
     }
 
     if (categoria && categoria.trim().length > 0) {
-      where.categoria = { equals: categoria.trim(), mode: 'insensitive' };
+      conditions.push({
+        categoria: { equals: categoria.trim(), mode: 'insensitive' }
+      });
     }
 
     if (formato) {
-      where.formato = formato;
+      conditions.push({ formato });
     }
 
     if (soloDisponibles === 'true') {
-      where.OR = [
-        { formato: FormatoLibro.DIGITAL },
-        { ejemplaresDisponibles: { gt: 0 } }
-      ];
+      conditions.push({
+        OR: [
+          { formato: FormatoLibro.DIGITAL },
+          { ejemplaresDisponibles: { gt: 0 } }
+        ]
+      });
     }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const [total, libros] = await Promise.all([
       prisma.libro.count({ where }),
@@ -220,6 +228,11 @@ export class LibrosService {
         ejemplaresTotales: datos.ejemplaresTotales,
         ejemplaresDisponibles: datos.ejemplaresDisponibles,
         ubicacion: datos.ubicacion?.trim(),
+        archivoUrl: datos.archivoUrl?.trim(),
+        archivoNombre: datos.archivoNombre?.trim(),
+        sha256: datos.sha256?.trim(),
+        tamanoMb: datos.tamanoMb,
+        portadaUrl: datos.portadaUrl?.trim(),
         resumen: datos.resumen?.trim(),
         year: datos.year?.trim()
       }

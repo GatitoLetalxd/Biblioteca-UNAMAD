@@ -41,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,8 +62,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.biblioteca.R
-import com.example.biblioteca.ui.theme.UnamadGreenDark
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 
 val CARRERAS_OFICIALES_UNAMAD = listOf(
@@ -95,7 +94,14 @@ fun RegistroEstudianteScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(UnamadGreenDark)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
     ) {
         Column(
             modifier = Modifier
@@ -108,15 +114,15 @@ fun RegistroEstudianteScreen(
             // Escudo oficial de la UNAMAD
             Surface(
                 shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 4.dp,
-                modifier = Modifier.size(76.dp)
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 6.dp,
+                modifier = Modifier.size(80.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo_unamad),
-                        contentDescription = "Escudo Oficial UNAMAD",
-                        modifier = Modifier.size(54.dp)
+                        painter = painterResource(id = R.drawable.logo_biblioteca),
+                        contentDescription = "Logo Oficial UNAMAD",
+                        modifier = Modifier.size(60.dp).padding(4.dp)
                     )
                 }
             }
@@ -128,13 +134,13 @@ fun RegistroEstudianteScreen(
                 fontWeight = FontWeight.Black,
                 fontSize = 18.sp,
                 letterSpacing = 1.sp,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
                 text = "Universidad Nacional Amazónica de Madre de Dios",
                 fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
@@ -332,8 +338,8 @@ fun RegistroEstudianteScreen(
                         enabled = !state.isLoading,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier
                             .fillMaxWidth()

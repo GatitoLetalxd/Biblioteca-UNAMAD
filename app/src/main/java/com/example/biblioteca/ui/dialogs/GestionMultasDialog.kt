@@ -1,6 +1,5 @@
 package com.example.biblioteca.ui.dialogs
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,15 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Paid
-import androidx.compose.material.icons.filled.Payment
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,7 +52,6 @@ import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
 import com.example.biblioteca.ui.theme.StatusOutBg
 import com.example.biblioteca.ui.theme.StatusOutText
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -148,7 +139,7 @@ fun GestionMultasDialog(
                 PrimaryTabRow(
                     selectedTabIndex = tabSeleccionada,
                     containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = UnamadGreenPrimary
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
                         selected = tabSeleccionada == 0,
@@ -286,7 +277,7 @@ fun MultaCard(
                     text = "S/. ${String.format(Locale.US, "%.2f", multa.montoTotal)}",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Black,
-                    color = if (isPendiente) Color(0xFFDC2626) else UnamadGreenPrimary
+                    color = if (isPendiente) Color(0xFFDC2626) else MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -359,8 +350,8 @@ fun MultaCard(
                     Button(
                         onClick = onCobrar,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f)

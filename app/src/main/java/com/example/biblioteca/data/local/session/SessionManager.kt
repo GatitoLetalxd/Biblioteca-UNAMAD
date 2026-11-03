@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.biblioteca.model.RolUsuario
 import com.example.biblioteca.model.Usuario
+import com.example.biblioteca.ui.theme.ThemeMode
 
 class SessionManager(context: Context) {
 
@@ -18,6 +19,7 @@ class SessionManager(context: Context) {
         private const val KEY_EMAIL = "session_email"
         private const val KEY_CARRERA = "session_carrera"
         private const val KEY_TELEFONO = "session_telefono"
+        private const val KEY_THEME_MODE = "session_theme_mode"
     }
 
     fun guardarSesion(usuario: Usuario, token: String? = null) {
@@ -58,10 +60,25 @@ class SessionManager(context: Context) {
     }
 
     fun cerrarSesion() {
+        val currentTheme = obtenerThemeMode()
         prefs.edit().clear().apply()
+        guardarThemeMode(currentTheme)
     }
 
     fun tieneSesionActiva(): Boolean {
         return !prefs.getString(KEY_CODIGO, null).isNullOrBlank()
+    }
+
+    fun guardarThemeMode(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
+    }
+
+    fun obtenerThemeMode(): ThemeMode {
+        val modeStr = prefs.getString(KEY_THEME_MODE, null) ?: return ThemeMode.SYSTEM
+        return try {
+            ThemeMode.valueOf(modeStr)
+        } catch (e: Exception) {
+            ThemeMode.SYSTEM
+        }
     }
 }

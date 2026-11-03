@@ -1,147 +1,153 @@
-# 🏛️ Sistema Integral de Biblioteca Central — UNAMAD
+# Sistema Integral de Biblioteca Central — UNAMAD
 ### Universidad Nacional Amazónica de Madre de Dios
 
 ![Android](https://img.shields.io/badge/Android-Kotlin%202.2-green.svg?logo=android&logoColor=white)
 ![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-blue.svg?logo=jetpackcompose&logoColor=white)
+![Theme](https://img.shields.io/badge/Theme-Light%20%7C%20Obsidian%20Dark-amber.svg)
 ![Backend](https://img.shields.io/badge/Backend-Node.js%2020%20%7C%20TypeScript-informational.svg?logo=nodedotjs&logoColor=white)
 ![Database](https://img.shields.io/badge/Database-PostgreSQL%2016%20%7C%20Room%20v4-blue.svg?logo=postgresql&logoColor=white)
 ![ORM](https://img.shields.io/badge/ORM-Prisma%205-2D3748.svg?logo=prisma&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)
 
-Monorepo institucional que integra la **aplicación móvil Android**, el **backend API REST en Node.js/TypeScript**, un catálogo relacional en **PostgreSQL**, y un **acervo digital de 100 libros completos en PDF** clasificados por facultades y disciplinas académicas.
+Monorepo institucional de alto rendimiento que integra la **aplicación móvil nativa Android**, el **backend API REST en Node.js/TypeScript**, persistencia relacional en **PostgreSQL**, base de datos local **Room (Offline-First)** y un **acervo digital de 100 libros completos en PDF** clasificados por facultades y disciplinas académicas.
 
 ---
 
-## 📂 Estructura del Monorepo
+## 1. Novedades y Sistema Visual Rediseñado
+
+### Tema Claro y Modo Oscuro Obsidian Slate
+- **Conmutador de Tema Persistente:** Permite alternar entre **Modo Claro**, **Modo Oscuro** y **Seguir al Sistema**, manteniendo la preferencia del usuario en `SharedPreferences` (`SessionManager`) incluso tras cerrar sesión.
+- **Paleta Obsidian Minimalista (Cero Verde en Modo Oscuro):**
+  - Fondo: Negro Obsidiana Profundo (`#0B0F17`).
+  - Superficies y Tarjetas: Slate Carbón (`#121722` y `#1A2130`).
+  - Acento Primario: Oro / Ámbar Cálido (`#FBBF24`), garantizando contraste superior a 11:1.
+  - Tipografía: Blanco Puro (`#F8FAFC`, ratio > 16:1) y Slate 400 (`#94A3B8`, ratio > 7:1) en estricto cumplimiento con las directrices **WCAG AAA**.
+- **Tema Claro Institucional:** Conserva la identidad universitaria con Verde Selva UNAMAD (`#164E3F`) y Ámbar Clásico (`#D97706`).
+
+### Iconografía y Nuevo Isotipo Minimalista
+- **Cero Emojis:** Se erradicaron los emojis de Unicode en toda la interfaz de usuario, reemplazándolos por iconografía vectorial uniforme de **Material 3** (`Icons.Default.*` y `Icons.AutoMirrored.*`).
+- **Nuevo Logo Adaptativo:** Isotipo geométrico monolineal de libro abierto sobre fondo obsidiana mate (`#0E1726`), integrado como drawable WebP e icono adaptativo en todas las densidades de pantalla (`mdpi` a `xxxhdpi`).
+- **Cuadro de Búsqueda Compacto:** Se optimizaron los insets de ventana (`WindowInsets(0.dp)`) eliminando el espaciado redundante superior, con botón dinámico de limpieza de texto.
+- **Cierre de Sesión Seguro:** Centralizado exclusivamente en la sección de **Perfil / Carnet** con modal de confirmación emergente.
+
+---
+
+## 2. Estructura del Monorepo
 
 ```text
 Biblioteca-UNAMAD/
-├── app/                  # 📱 Aplicación Móvil Android (Jetpack Compose + Clean Architecture + Room v4)
-├── backend/              # 💻 Servidor Backend API REST (Node.js + TypeScript + Express + Prisma + PostgreSQL)
-│   ├── src/              # Código fuente modular (Controllers, Services, Middlewares, Routes)
-│   ├── prisma/           # Modelado relacional y script de siembra (seed.ts)
-│   ├── storage/libros/   # Almacén de los 100 libros completos en PDF referenciados
-│   ├── API.md            # Documentación técnica completa de los endpoints REST
-│   ├── README.md         # Guía de despliegue nativo en VPS (PM2 + Nginx + PostgreSQL)
-│   └── deploy.sh         # Script automatizado de actualización para el VPS
-├── libros_descargados/   # Acervo bibliográfico de 100 PDFs y script SQL DDL masivo
-├── scripts/              # Herramientas de extracción y catalogación automatizada
-├── requerimientos.md     # Especificación de Requerimientos de Software (ERS)
-├── estructura.md         # Mapeo exhaustivo de archivos, módulos y recursos
-└── arquitectura.md       # Arquitectura de software, modelo de datos y diagramas de flujo
+├── app/                        # Aplicación Móvil Android (Jetpack Compose + Clean Architecture + Room)
+│   ├── src/main/java/com/example/biblioteca/
+│   │   ├── MainActivity.kt     # Actividad principal y observador de tema visual
+│   │   ├── model/              # Modelos de dominio inmutables y Enums
+│   │   ├── data/
+│   │   │   ├── local/          # Base de datos SQLite Room, DAOs, Entidades y SessionManager
+│   │   │   ├── remote/         # Retrofit API REST Client y DTOs de sincronización
+│   │   │   └── repository/     # Repositorio centralizado (Single Source of Truth)
+│   │   └── ui/
+│   │       ├── theme/          # Sistema de diseño, tokens M3 y paleta Obsidian
+│   │       ├── navigation/     # Scaffold principal, barra superior y NavigationBar animada
+│   │       ├── viewmodel/      # Gestión reactiva de estados con StateFlow y Corrutinas
+│   │       ├── screens/        # Pantallas: Catálogo, Préstamos, Solicitudes, Dashboard, Perfil, Login
+│   │       ├── dialogs/        # Modales: Visor Digital, Multas, Reportes, Solicitudes
+│   │       ├── components/     # Componentes modulares reutilizables y banners de conectividad
+│   │       └── util/           # Utilidades (Resolutor de URLs y proxies de PDF)
+│   └── src/main/res/           # Recursos visuales, WebP optimizados y vectores adaptativos
+├── backend/                    # Servidor Backend API REST (Node.js + TypeScript + Express + Prisma + PostgreSQL)
+│   ├── src/                    # Controladores, Servicios, Middlewares y Rutas modulares
+│   ├── prisma/                 # Esquema relacional y script de siembra (seed.ts)
+│   ├── storage/libros/         # Almacén de los 100 libros completos en PDF
+│   ├── API.md                  # Especificación técnica exhaustiva de endpoints REST
+│   └── README.md               # Guía de despliegue en servidor VPS con PM2, Nginx y SSL
+├── libros_descargados/         # Acervo bibliográfico descargado y scripts DDL
+├── GUIA_EXPOSICION_PROYECTO.md # Guía estructurada para la defensa y exposición técnica
+├── requerimientos.md           # Especificación de Requerimientos de Software (ERS)
+├── estructura.md               # Mapeo de archivos y recursos
+└── arquitectura.md             # Arquitectura de software, modelo de datos y diagramas
 ```
 
 ---
 
-## 🎯 Capacidades y Roles del Sistema
+## 3. Capacidades y Roles del Sistema (RBAC)
 
-El sistema implementa **Control de Acceso Basado en Roles (RBAC)** con 3 roles estrictos:
+El sistema implementa **Control de Acceso Basado en Roles** con 3 perfiles diferenciados:
 
-1. **`ESTUDIANTE`:**
-   - Autoregistro público obligatorio con **código universitario de 8 dígitos** (sin solicitud de DNI), primer nombre, primer apellido, carrera UNAMAD y teléfono.
-   - Solicitud de préstamos de libros físicos (3, 7 o 14 días) con seguimiento en tiempo real (`⏳ En Revisión`, `✅ Aprobada`, `❌ Rechazada`).
+1. **ESTUDIANTE:**
+   - Autoregistro con código universitario oficial de 8 dígitos y carrera UNAMAD.
+   - Búsqueda en catálogo con filtros avanzados (categoría, formato, disponibilidad y ordenamiento).
+   - Solicitud de préstamos de libros físicos (3, 7 o 14 días) con seguimiento en tiempo real.
    - Carnet Digital de Lector con semáforo de solvencia y deuda acumulada.
-   - Lector Digital Multi-Capítulo in-app con temas visuales (Papel, Sepia, Noche) y descarga de PDFs con verificación SHA-256.
-   - **Candado de Solvencia:** Bloqueo automático si el alumno tiene multas impagas o libros vencidos no devueltos.
+   - Lector Digital integrado con selector de fuente (Serif, Sans, Mono), tamaño ajustable (12sp a 24sp) y temas de papel (Sepia, Cálido, Noche).
+   - Selector de apariencia visual Claro / Oscuro con persistencia.
+   - **Candado de Solvencia:** Bloqueo preventivo de nuevas solicitudes en caso de multas pendientes o préstamos vencidos.
 
-2. **`BIBLIOTECARIO`:**
-   - Bandeja de solicitudes de préstamo: Aprobación (descuenta stock físico) y rechazo con registro obligatorio de motivo.
-   - Control de circulación y devoluciones físicas.
-   - **Cálculo Automático de Mora:** Aplicación automática de **S/. 1.50 por día de retraso** al recibir libros vencidos.
-   - Cobranza de multas en ventanilla y condonación administrativa con justificación documental.
-   - Panel de Auditoría tipo Base de Datos con visualización de alumnos en posesión de ejemplares físicos.
+2. **BIBLIOTECARIO:**
+   - Bandeja de evaluación de solicitudes: Aprobación (descuento automático de inventario) o Rechazo justificado.
+   - Control de circulación y devoluciones físicas con confirmación háptica (`SwipeToDismissBox`).
+   - **Cálculo Automático de Mora:** Generación de multas automáticas a razón de S/. 1.00 por día de retraso.
+   - Ventanilla de finanzas para cobro de multas o condonación documentada.
+   - Auditoría de inventario físico y listado de lectores con ejemplares en custodia.
 
-3. **`ADMIN`:**
-   - Superusuario institucional. Posee todas las facultades del bibliotecario y la exclusividad del endpoint `POST /api/v1/admin/usuarios` para crear y gestionar cuentas de `BIBLIOTECARIO` y nuevos `ADMIN`.
+3. **ADMINISTRADOR:**
+   - Superusuario directivo con todas las facultades de sala.
+   - Panel de Control institucional con métricas analíticas en tiempo real.
+   - Generador y exportador de Reportes de Circulación y Rendimiento Bibliotecario.
+   - Gestión y alta de personal bibliotecario.
 
 ---
 
-## 🚀 Puesta en Marcha Rápida
+## 4. Puesta en Marcha Rápida
 
-### 1. Backend API (Desarrollo Local)
+### 4.1. Servidor Backend API (Desarrollo Local)
 ```bash
 cd backend
 
-# Instalar dependencias
+# 1. Instalar dependencias
 npm install
 
-# Configurar variables de entorno
+# 2. Configurar variables de entorno
 cp .env.example .env
 
-# Generar cliente Prisma y sembrar la base de datos
+# 3. Generar cliente Prisma, migrar y sembrar datos de prueba
 npx prisma generate
 npx prisma migrate dev --name init
 npx prisma db seed
 
-# Iniciar servidor en modo desarrollo (recarga en caliente)
+# 4. Iniciar servidor en modo desarrollo
 npm run dev
-# -> API corriendo en http://localhost:3000/api/v1
+# -> API operativa en http://localhost:3000/api/v1
 ```
 
-### 2. Aplicación Móvil Android
-1. Abrir la carpeta raíz `Biblioteca UNAMAD` en **Android Studio Ladybug (o superior)**.
-2. Sincronizar Gradle (`Sync Project with Gradle Files`).
-3. Ejecutar en emulador o dispositivo físico (Android 8.0+ / API 26+).
-
----
-
-## 🌐 Despliegue en VPS (Linux sin Docker)
-
-Para desplegar el backend en un servidor VPS con **Ubuntu 22.04 / 24.04** utilizando **PM2, Nginx y PostgreSQL nativo**:
-
-```bash
-# En el VPS:
-cd /var/www
-git clone https://github.com/GatitoLetalxd/Biblioteca-UNAMAD.git
-cd Biblioteca-UNAMAD/backend
-
-# Configurar y compilar
-cp .env.example .env # Configurar DATABASE_URL y JWT_SECRET
-npm install
-npx prisma migrate deploy
-npx prisma db seed
-npm run build
-
-# Iniciar con PM2 (Autorestart y persistencia tras reinicios)
-pm2 start dist/server.js --name biblioteca-api --max-memory-restart 300M
-pm2 startup
-pm2 save
+### 4.2. Aplicación Móvil Android
+1. Abrir el directorio raíz en **Android Studio Ladybug (o versión superior)**.
+2. Sincronizar dependencias mediante Gradle (`Sync Project with Gradle Files`).
+3. Compilar y ejecutar en emulador o dispositivo físico (Android 8.0+ / API 26+):
+```powershell
+# Verificación de compilación por terminal
+.\gradlew.bat assembleDebug
 ```
-> Consulta la guía detallada de configuración de Nginx con SSL y caché en [`backend/README.md`](./backend/README.md).
 
 ---
 
-## 📚 Acervo de 100 Libros Digitales (PDFs)
-
-El catálogo incluye **100 libros completos en PDF** organizados temáticamente:
-- **Libros 01 – 20:** *Literatura y Filosofía* (Camus, Martín Gaite, Spinoza, Schopenhauer, etc.).
-- **Libros 21 – 40:** *Cuentos y Narrativa* (Ribeyro, Hermanos Grimm, Gallegos Lara, Wilde, etc.).
-- **Libros 41 – 60:** *Ingeniería de Sistemas* (Algoritmos, Python, Redes, Electrónica, TIC).
-- **Libros 61 – 80:** *Inteligencia Artificial* (Deep Learning, Pattern Analysis, Feature Extraction, Vision).
-- **Libros 81 – 100:** *Ciencias Ambientales e Investigación* (Amazonía, Ecología, Botánica, Metodología IIAP).
-
-Todos los libros están referenciados mediante rutas relativas y cuentan con hashes **SHA-256 precalculados** para validación de integridad en [`backend/prisma/catalogo_100.json`](./backend/prisma/catalogo_100.json).
-
----
-
-## 🔑 Credenciales Iniciales de Prueba (Seed)
+## 5. Credenciales Iniciales de Prueba (Seed)
 
 | Rol | Código | Contraseña | Usuario | Estado Inicial |
 |---|:---:|:---:|---|---|
 | **ADMIN** | `ADMIN-01` | `admin123` | Ronald Vásquez (Dirección) | Superusuario institucional |
 | **BIBLIOTECARIO** | `BIBLIO-01` | `biblio123` | Carlos Gutiérrez (Ventanilla) | Operador de sala y circulación |
-| **ESTUDIANTE 1** | `20230451` | `alumno123` | Jhordy Pérez (Sistemas) | Cuenta solvente (al día) |
-| **ESTUDIANTE 2** | `20220120` | `alumno123` | Lucía Mendoza (Forestal) | Multa pendiente S/. 3.00 (Insolvente) |
+| **ESTUDIANTE 1** | `20230451` | `alumno123` | Rogeero Daniel Montufar (Sistemas) | Cuenta solvente (al día) |
+| **ESTUDIANTE 2** | `20220120` | `alumno123` | Lucía Mendoza (Forestal) | Multa pendiente (Insolvente) |
 
 ---
 
-## 📖 Documentación Técnica de Referencia
+## 6. Recursos para Exposición y Documentación Técnica
 
-- 📋 [**Especificación de Requerimientos de Software (ERS)**](./requerimientos.md)
-- 🗺️ [**Estructura Completa de Paquetes y Recursos**](./estructura.md)
-- 🏗️ [**Arquitectura de Software y Modelo Relacional (ERD)**](./arquitectura.md)
-- ⚡ [**Documentación Exhaustiva de APIs REST (`API.md`)**](./backend/API.md)
-- 🖥️ [**Guía de Despliegue en Servidor VPS (`README.md`)**](./backend/README.md)
+- **[Guía para Exposición y Defensa Técnica](./GUIA_EXPOSICION_PROYECTO.md)** *(Arquitectura, diagrama de flujo, respuestas a preguntas del jurado y guion de presentación).*
+- [Especificación de Requerimientos de Software (ERS)](./requerimientos.md)
+- [Mapeo de Estructura de Paquetes y Recursos](./estructura.md)
+- [Arquitectura de Software y Modelo de Datos](./arquitectura.md)
+- [Documentación Exhaustiva de la API REST (`API.md`)](./backend/API.md)
+- [Guía de Despliegue en Servidor VPS Linux](./backend/README.md)
 
 ---
 **Universidad Nacional Amazónica de Madre de Dios (UNAMAD)**  

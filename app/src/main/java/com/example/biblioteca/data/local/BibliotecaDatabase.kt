@@ -4,6 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.example.biblioteca.data.local.dao.LibroDao
 import com.example.biblioteca.data.local.dao.MultaDao
 import com.example.biblioteca.data.local.dao.PrestamoDao
@@ -27,7 +31,7 @@ import com.example.biblioteca.model.RolUsuario
         SolicitudPrestamoEntity::class,
         MultaEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class BibliotecaDatabase : RoomDatabase() {
@@ -50,6 +54,22 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                     "biblioteca_unamad_db"
                 )
                     .fallbackToDestructiveMigration(dropAllTables = true)
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            super.onCreate(db)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                INSTANCE?.let { database ->
+                                    populateInitialData(
+                                        database.libroDao(),
+                                        database.prestamoDao(),
+                                        database.usuarioDao(),
+                                        database.solicitudPrestamoDao(),
+                                        database.multaDao()
+                                    )
+                                }
+                            }
+                        }
+                    })
                     .build()
                 INSTANCE = instance
                 instance
@@ -79,33 +99,31 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 ),
                 UsuarioEntity(
                     id = 2,
-                    codigo = "2023-04510",
+                    codigo = "20230451",
                     password = "alumno123",
                     nombre = "Jhordy",
                     apellidos = "Pérez Ramos",
                     carreraOArea = "Ingeniería de Sistemas e Informática",
                     telefono = "982123456",
-                    email = "202304510@unamad.edu.pe",
+                    email = "20230451@unamad.edu.pe",
                     rol = RolUsuario.ESTUDIANTE.name,
                     activo = true
                 ),
                 UsuarioEntity(
                     id = 3,
-                    codigo = "2022-01205",
+                    codigo = "20220120",
                     password = "alumno123",
                     nombre = "Lucía",
                     apellidos = "Mendoza Ríos",
                     carreraOArea = "Ingeniería Forestal y Medio Ambiente",
                     telefono = "974556677",
-                    email = "202201205@unamad.edu.pe",
+                    email = "20220120@unamad.edu.pe",
                     rol = RolUsuario.ESTUDIANTE.name,
                     activo = true
                 )
             )
+            // Insertar usuarios iniciales con upsert
             usuarioDao.insertAll(initialUsers)
-
-            // Limpiar catálogo previo para garantizar exactamente los 7 títulos oficiales
-            libroDao.deleteAllLibros()
 
             // Catálogo inicial de libros
             val initialBooks = listOf(
@@ -220,7 +238,7 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 PrestamoEntity(
                     libroId = 1,
                     nombreLector = "Jhordy Pérez Ramos",
-                    codigoLector = "2023-04510",
+                    codigoLector = "20230451",
                     carreraOArea = "Ingeniería de Sistemas e Informática",
                     telefonoLector = "982123456",
                     fechaPrestamo = now - (3 * dayMillis),
@@ -233,7 +251,7 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 PrestamoEntity(
                     libroId = 3,
                     nombreLector = "Lucía Mendoza Ríos",
-                    codigoLector = "2022-01205",
+                    codigoLector = "20220120",
                     carreraOArea = "Ingeniería Forestal y Medio Ambiente",
                     telefonoLector = "974556677",
                     fechaPrestamo = now - (10 * dayMillis),
@@ -248,7 +266,7 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 SolicitudPrestamoEntity(
                     usuarioId = 3,
                     libroId = 4,
-                    codigoEstudiante = "2022-01205",
+                    codigoEstudiante = "20220120",
                     nombreEstudiante = "Lucía Mendoza Ríos",
                     carreraEstudiante = "Ingeniería Forestal y Medio Ambiente",
                     telefonoEstudiante = "974556677",
@@ -263,7 +281,7 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 SolicitudPrestamoEntity(
                     usuarioId = 2,
                     libroId = 1,
-                    codigoEstudiante = "2023-04510",
+                    codigoEstudiante = "20230451",
                     nombreEstudiante = "Jhordy Pérez Ramos",
                     carreraEstudiante = "Ingeniería de Sistemas e Informática",
                     telefonoEstudiante = "982123456",
@@ -280,7 +298,7 @@ abstract class BibliotecaDatabase : RoomDatabase() {
                 MultaEntity(
                     prestamoId = 2,
                     usuarioId = 3,
-                    codigoEstudiante = "2022-01205",
+                    codigoEstudiante = "20220120",
                     nombreEstudiante = "Lucía Mendoza Ríos",
                     tituloLibro = "Estructuras de Datos y Algoritmos en Java",
                     diasRetraso = 2,

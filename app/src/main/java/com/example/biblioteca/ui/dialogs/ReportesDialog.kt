@@ -1,7 +1,5 @@
 package com.example.biblioteca.ui.dialogs
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,8 +40,8 @@ import androidx.compose.ui.unit.sp
 import com.example.biblioteca.ui.theme.AmberAccent
 import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
-import com.example.biblioteca.ui.theme.UnamadGreenDark
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.util.Locale
 
@@ -66,7 +59,7 @@ fun ReportesDialog(
                 Icon(
                     imageVector = Icons.Default.Assessment,
                     contentDescription = null,
-                    tint = UnamadGreenPrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(26.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -193,7 +186,7 @@ fun ReportesDialog(
                 // Sección 1: Top 5 Libros Más Solicitados / Prestados
                 item {
                     Text(
-                        text = "🏆 Libros Más Prestados (Ranking)",
+                        text = "Libros Más Prestados (Ranking)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -292,7 +285,7 @@ fun ReportesDialog(
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "🎓 Lectura por Carrera Profesional",
+                        text = "Lectura por Carrera Profesional",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

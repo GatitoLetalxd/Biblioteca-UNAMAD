@@ -1,8 +1,12 @@
 package com.example.biblioteca.ui.navigation
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,22 +15,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,7 +45,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,12 +56,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.biblioteca.R
+import com.example.biblioteca.ui.theme.ThemeMode
+import com.example.biblioteca.ui.components.ConnectivityStatusBanner
 import com.example.biblioteca.ui.dialogs.DigitalViewerDialog
 import com.example.biblioteca.ui.dialogs.GestionMultasDialog
 import com.example.biblioteca.ui.dialogs.NuevoPrestamoDialog
@@ -74,7 +83,7 @@ import com.example.biblioteca.ui.screens.PerfilEstudianteScreen
 import com.example.biblioteca.ui.screens.PrestamosScreen
 import com.example.biblioteca.ui.screens.RegistroEstudianteScreen
 import com.example.biblioteca.ui.theme.AmberAccent
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 
 enum class AppDestination(val route: String, val title: String, val icon: ImageVector) {
@@ -102,6 +111,10 @@ fun BibliotecaApp(
     val libroSeleccionadoParaPrestamo by viewModel.libroSeleccionadoParaPrestamo.collectAsState()
     val libroSeleccionadoParaVisor by viewModel.libroSeleccionadoParaVisor.collectAsState()
     val catalogoUiState by viewModel.catalogoUiState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
+    val isSincronizando by viewModel.isSincronizando.collectAsState()
+    val currentThemeMode by viewModel.themeMode.collectAsState()
+    val haptic = LocalHapticFeedback.current
 
     // Estados de Solicitudes (Fase 2)
     val totalPendientes by viewModel.totalSolicitudesPendientes.collectAsState()
@@ -117,7 +130,6 @@ fun BibliotecaApp(
     // Panel Administrativo de Base de Datos e Inventario
     val isPanelInventarioOpen by viewModel.isPanelInventarioOpen.collectAsState()
 
-    var showLogoutDialog by remember { mutableStateOf(false) }
 
     // Mostrar Notificaciones tipo Snackbar
     LaunchedEffect(mensajeNotificacion) {
@@ -179,39 +191,64 @@ fun BibliotecaApp(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = when (currentDestination) {
-                                AppDestination.CATALOGO -> "Catálogo Bibliográfico"
-                                AppDestination.SOLICITUDES -> "Gestión de Solicitudes"
-                                AppDestination.PRESTAMOS -> if (esBibliotecario) "Gestión de Préstamos" else "Mis Préstamos"
-                                AppDestination.DASHBOARD -> "Panel Institucional UNAMAD"
-                                AppDestination.PERFIL -> "Mi Carnet de Lector"
-                            },
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Text(
-                            text = if (esBibliotecario) "Portal de Administración" else "Portal del Estudiante",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_biblioteca),
+                                    contentDescription = "Logo UNAMAD",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = when (currentDestination) {
+                                    AppDestination.CATALOGO -> "Catálogo Bibliográfico"
+                                    AppDestination.SOLICITUDES -> "Gestión de Solicitudes"
+                                    AppDestination.PRESTAMOS -> if (esBibliotecario) "Gestión de Préstamos" else "Mis Préstamos"
+                                    AppDestination.DASHBOARD -> "Panel Institucional UNAMAD"
+                                    AppDestination.PERFIL -> "Mi Carnet de Lector"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (esBibliotecario) "Portal de Administración" else "Portal del Estudiante",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 actions = {
+                    // Botón para Alternar Tema Claro / Oscuro
+                    IconButton(onClick = { viewModel.alternarThemeMode() }) {
+                        Icon(
+                            imageVector = when (currentThemeMode) {
+                                ThemeMode.LIGHT -> Icons.Default.LightMode
+                                ThemeMode.DARK -> Icons.Default.DarkMode
+                                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                            },
+                            contentDescription = "Alternar Tema Claro / Oscuro",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     // Chip con Nombre y Rol del Usuario
                     Surface(
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(50),
                         modifier = Modifier
                             .padding(end = 4.dp)
                             .clickable {
-                                if (!esBibliotecario) {
-                                    currentDestination = AppDestination.PERFIL
-                                } else {
-                                    showLogoutDialog = true
-                                }
+                                currentDestination = AppDestination.PERFIL
                             }
                     ) {
                         Row(
@@ -220,14 +257,14 @@ fun BibliotecaApp(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (esBibliotecario) AmberAccent else Color.White,
+                                color = if (esBibliotecario) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (esBibliotecario) Icons.Default.AdminPanelSettings else Icons.Default.School,
                                         contentDescription = null,
-                                        tint = UnamadGreenPrimary,
+                                        tint = if (esBibliotecario) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(13.dp)
                                     )
                                 }
@@ -235,7 +272,7 @@ fun BibliotecaApp(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = usuario.nombre.split(" ").firstOrNull() ?: usuario.nombre,
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -247,22 +284,14 @@ fun BibliotecaApp(
                         Icon(
                             imageVector = Icons.Default.Sync,
                             contentDescription = "Sincronizar con Servidor",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Botón para Cerrar Sesión
-                    IconButton(onClick = { showLogoutDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar Sesión",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = UnamadGreenPrimary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -275,7 +304,12 @@ fun BibliotecaApp(
                     val isSelected = currentDestination == destination
                     NavigationBarItem(
                         selected = isSelected,
-                        onClick = { currentDestination = destination },
+                        onClick = {
+                            if (!isSelected) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                currentDestination = destination
+                            }
+                        },
                         icon = {
                             if (destination == AppDestination.SOLICITUDES && totalPendientes > 0) {
                                 BadgedBox(
@@ -312,9 +346,11 @@ fun BibliotecaApp(
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = UnamadGreenPrimary,
-                            selectedTextColor = UnamadGreenPrimary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -323,71 +359,60 @@ fun BibliotecaApp(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        // Contenido de la pantalla actual
-        when (currentDestination) {
-            AppDestination.CATALOGO -> {
-                CatalogoScreen(
-                    viewModel = viewModel,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            AppDestination.SOLICITUDES -> {
-                GestionSolicitudesScreen(
-                    viewModel = viewModel,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            AppDestination.PRESTAMOS -> {
-                PrestamosScreen(
-                    viewModel = viewModel,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            AppDestination.DASHBOARD -> {
-                DashboardScreen(
-                    viewModel = viewModel,
-                    onNavigateToCatalogo = { currentDestination = AppDestination.CATALOGO },
-                    onNavigateToPrestamos = { currentDestination = AppDestination.PRESTAMOS },
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            AppDestination.PERFIL -> {
-                PerfilEstudianteScreen(
-                    viewModel = viewModel,
-                    onNavigateToCatalogo = { currentDestination = AppDestination.CATALOGO },
-                    modifier = Modifier.padding(innerPadding)
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Banner de Estado de Conectividad (Online / Offline / Sincronizando)
+            ConnectivityStatusBanner(
+                isOnline = isOnline,
+                isSyncing = isSincronizando,
+                onRetrySync = { viewModel.sincronizarConServidor() }
+            )
+
+            // Contenido con Transición Animada entre Pestañas
+            AnimatedContent(
+                targetState = currentDestination,
+                transitionSpec = {
+                    if (targetState.ordinal > initialState.ordinal) {
+                        (slideInHorizontally { width -> width / 3 } + fadeIn())
+                            .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
+                    } else {
+                        (slideInHorizontally { width -> -width / 3 } + fadeIn())
+                            .togetherWith(slideOutHorizontally { width -> width / 3 } + fadeOut())
+                    }
+                },
+                label = "navigation_tab_transition",
+                modifier = Modifier.weight(1f)
+            ) { destination ->
+                when (destination) {
+                    AppDestination.CATALOGO -> {
+                        CatalogoScreen(viewModel = viewModel)
+                    }
+                    AppDestination.SOLICITUDES -> {
+                        GestionSolicitudesScreen(viewModel = viewModel)
+                    }
+                    AppDestination.PRESTAMOS -> {
+                        PrestamosScreen(viewModel = viewModel)
+                    }
+                    AppDestination.DASHBOARD -> {
+                        DashboardScreen(
+                            viewModel = viewModel,
+                            onNavigateToCatalogo = { currentDestination = AppDestination.CATALOGO },
+                            onNavigateToPrestamos = { currentDestination = AppDestination.PRESTAMOS }
+                        )
+                    }
+                    AppDestination.PERFIL -> {
+                        PerfilEstudianteScreen(
+                            viewModel = viewModel,
+                            onNavigateToCatalogo = { currentDestination = AppDestination.CATALOGO }
+                        )
+                    }
+                }
             }
         }
 
-        // Diálogo de Confirmación de Cierre de Sesión
-        if (showLogoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showLogoutDialog = false },
-                title = { Text(text = "Cerrar Sesión") },
-                text = {
-                    Text(
-                        text = "¿Estás seguro de que deseas salir de la cuenta de ${usuario.nombreCompleto} (${usuario.rol.etiqueta})?"
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showLogoutDialog = false
-                            viewModel.cerrarSesion()
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showLogoutDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
 
         // Diálogo para Solicitar Préstamo (Estudiante)
         libroParaSolicitar?.let { libro ->

@@ -10,7 +10,9 @@ export const crearPrestamoDirectoSchema = z.object({
   nombreLector: z.string().min(2, 'El nombre del lector es obligatorio'),
   carreraOArea: z.string().min(2, 'La carrera o área es obligatoria'),
   telefonoLector: z.string().optional(),
-  diasPrestamo: z.number().int().min(1).max(30).default(7),
+  diasPrestamo: z.number().int().refine((val) => [3, 7, 14].includes(val), {
+    message: 'El plazo de préstamo institucional debe ser de 3, 7 o 14 días'
+  }).default(7),
   notas: z.string().optional()
 });
 
@@ -122,7 +124,51 @@ export class PrestamosService {
       where: { codigo: validated.codigoLector.trim() }
     });
 
+    if (!usuario) {
+      throw new AppError(
+        `Lector no registrado: No existe ningún usuario con el código '${validated.codigoLector.trim()}'. El estudiante debe registrarse primero.`,
+        404
+      );
+    }
+
     const now = new Date();
+
+    // Candado de Solvencia: Verificar si el lector tiene multas pendientes
+    const multasPendientes = await prisma.multa.count({
+      where: {
+        usuarioId: usuario.id,
+        estado: EstadoMulta.PENDIENTE
+      }
+    });
+
+    if (multasPendientes > 0) {
+      throw new AppError(
+        `Lector no solvente: El estudiante ${usuario.nombre} ${usuario.apellido} tiene multas pendientes de pago por mora. No se puede emitir el préstamo físico.`,
+        400
+      );
+    }
+
+    // Candado de Solvencia: Verificar si tiene libros físicos vencidos no devueltos
+    const prestamosVencidos = await prisma.prestamo.count({
+      where: {
+        usuarioId: usuario.id,
+        OR: [
+          { estado: EstadoPrestamo.VENCIDO },
+          {
+            estado: EstadoPrestamo.ACTIVO,
+            fechaDevolucionEstimada: { lt: now }
+          }
+        ]
+      }
+    });
+
+    if (prestamosVencidos > 0) {
+      throw new AppError(
+        `Lector no solvente: El estudiante tiene libros vencidos pendientes de devolución en su poder.`,
+        400
+      );
+    }
+
     const dayMillis = 24 * 60 * 60 * 1000;
     const fechaEstimada = new Date(now.getTime() + validated.diasPrestamo * dayMillis);
 
@@ -137,7 +183,7 @@ export class PrestamosService {
 
       return tx.prestamo.create({
         data: {
-          usuarioId: usuario ? usuario.id : 1, // Fallback si fue un lector externo
+          usuarioId: usuario.id,
           libroId: libro.id,
           nombreLector: validated.nombreLector.trim(),
           codigoLector: validated.codigoLector.trim(),
@@ -186,13 +232,17 @@ export class PrestamosService {
         }
       });
 
-      // 2. Incrementar stock disponible del libro
-      await tx.libro.update({
-        where: { id: prestamo.libroId },
-        data: {
-          ejemplaresDisponibles: { increment: 1 }
-        }
-      });
+      // 2. Incrementar stock disponible del libro (solo físico/híbrido y sin exceder el total)
+      if (prestamo.libro.formato !== FormatoLibro.DIGITAL) {
+        const stockActualizado = Math.min(
+          prestamo.libro.ejemplaresDisponibles + 1,
+          prestamo.libro.ejemplaresTotales
+        );
+        await tx.libro.update({
+          where: { id: prestamo.libroId },
+          data: { ejemplaresDisponibles: stockActualizado }
+        });
+      }
 
       let multaGenerada = null;
       let mensaje = 'Devolución registrada con éxito. Ejemplar reincorporado a estantería.';

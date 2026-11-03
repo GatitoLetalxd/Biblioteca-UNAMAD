@@ -6,11 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.biblioteca.data.local.BibliotecaDatabase
 import com.example.biblioteca.data.local.session.SessionManager
 import com.example.biblioteca.data.repository.BibliotecaRepository
 import com.example.biblioteca.ui.navigation.BibliotecaApp
 import com.example.biblioteca.ui.theme.BibliotecaTheme
+import com.example.biblioteca.ui.theme.ThemeMode
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModelFactory
 
@@ -41,7 +45,13 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            BibliotecaTheme {
+            val currentThemeMode by viewModel.themeMode.collectAsState()
+            val darkTheme = when (currentThemeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            BibliotecaTheme(darkTheme = darkTheme) {
                 BibliotecaApp(viewModel = viewModel)
             }
         }

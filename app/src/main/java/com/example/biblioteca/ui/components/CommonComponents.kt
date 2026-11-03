@@ -2,6 +2,19 @@ package com.example.biblioteca.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -32,10 +46,11 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -80,15 +95,13 @@ import com.example.biblioteca.model.FormatoLibro
 import com.example.biblioteca.model.Libro
 import com.example.biblioteca.model.Prestamo
 import com.example.biblioteca.ui.theme.AmberAccent
+import com.example.biblioteca.ui.theme.LocalAdaptiveStatusColors
 import com.example.biblioteca.ui.theme.StatusAvailableBg
 import com.example.biblioteca.ui.theme.StatusAvailableText
-import com.example.biblioteca.ui.theme.StatusDigitalBg
-import com.example.biblioteca.ui.theme.StatusDigitalText
 import com.example.biblioteca.ui.theme.StatusLoanBg
 import com.example.biblioteca.ui.theme.StatusLoanText
 import com.example.biblioteca.ui.theme.StatusOutBg
 import com.example.biblioteca.ui.theme.StatusOutText
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -286,6 +299,8 @@ fun BookCard(
 ) {
     var expandido by remember { mutableStateOf(false) }
 
+    val statusColors = LocalAdaptiveStatusColors.current
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -440,7 +455,11 @@ fun BookCard(
                         }
                         if (libro.ubicacion.isNotBlank()) {
                             Text(
-                                text = "Ubicación física: ${libro.ubicacion}",
+                                text = if (libro.formato == FormatoLibro.DIGITAL) {
+                                    "Acceso: ${libro.ubicacion}"
+                                } else {
+                                    "Ubicación física: ${libro.ubicacion}"
+                                },
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -471,16 +490,16 @@ fun BookCard(
                         StatusBadge(
                             text = "Digital PDF",
                             icon = Icons.Default.PictureAsPdf,
-                            backgroundColor = StatusDigitalBg,
-                            textColor = StatusDigitalText
+                            backgroundColor = statusColors.digital.bg,
+                            textColor = statusColors.digital.text
                         )
                     }
                     FormatoLibro.HIBRIDO -> {
                         StatusBadge(
                             text = "Físico + PDF",
                             icon = Icons.Default.AutoStories,
-                            backgroundColor = StatusDigitalBg,
-                            textColor = StatusDigitalText
+                            backgroundColor = statusColors.digital.bg,
+                            textColor = statusColors.digital.text
                         )
                     }
                 }
@@ -491,26 +510,51 @@ fun BookCard(
                         StatusBadge(
                             text = "${libro.ejemplaresDisponibles} de ${libro.ejemplaresTotales} disp.",
                             icon = Icons.Default.CheckCircle,
-                            backgroundColor = StatusAvailableBg,
-                            textColor = StatusAvailableText
+                            backgroundColor = statusColors.available.bg,
+                            textColor = statusColors.available.text
                         )
                     } else {
                         StatusBadge(
                             text = "Agotado (0 disp.)",
                             icon = Icons.Default.ErrorOutline,
-                            backgroundColor = StatusOutBg,
-                            textColor = StatusOutText
+                            backgroundColor = statusColors.overdue.bg,
+                            textColor = statusColors.overdue.text
                         )
                     }
                 }
 
-                if (libro.ubicacion.isNotBlank() && !expandido) {
-                    Text(
-                        text = "📍 ${libro.ubicacion}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
+                if (!expandido) {
+                    if (libro.formato != FormatoLibro.DIGITAL && libro.ubicacion.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = libro.ubicacion,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else if (libro.formato == FormatoLibro.DIGITAL) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Public,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Repositorio Digital",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 
@@ -548,8 +592,8 @@ fun BookCard(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(
@@ -583,6 +627,8 @@ fun LoanCard(
     val fechaDevolucionEstimadaStr = dateFormat.format(Date(prestamo.fechaDevolucionEstimada))
     val isDevuelto = prestamo.estado == EstadoPrestamo.DEVUELTO
     val isVencido = prestamo.estado == EstadoPrestamo.VENCIDO
+
+    val statusColors = LocalAdaptiveStatusColors.current
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -742,8 +788,8 @@ fun LoanCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isVencido) AmberAccent else UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = if (isVencido) AmberAccent else MaterialTheme.colorScheme.primary,
+                            contentColor = if (isVencido) Color.Black else MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(
@@ -812,7 +858,7 @@ fun SwipeableLoanCard(
         backgroundContent = {
             val color by animateColorAsState(
                 targetValue = when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.StartToEnd -> UnamadGreenPrimary
+                    SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 },
                 label = "swipeBackground"
@@ -861,6 +907,8 @@ fun StatMetricCard(
     iconTint: Color,
     modifier: Modifier = Modifier
 ) {
+    val statusColors = LocalAdaptiveStatusColors.current
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -915,6 +963,261 @@ fun StatMetricCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
+        }
+    }
+}
+
+// =========================================================================
+// SHIMMER / SKELETON LOADING EFFECTS
+// =========================================================================
+
+fun Modifier.shimmerEffect(): Modifier = composed {
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val transition = rememberInfiniteTransition(label = "shimmer_transition")
+    val startOffsetX by transition.animateFloat(
+        initialValue = -2 * size.width.toFloat(),
+        targetValue = 2 * size.width.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_offset"
+    )
+
+    background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            ),
+            start = Offset(startOffsetX, 0f),
+            end = Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())
+        )
+    ).onGloballyPositioned {
+        size = it.size
+    }
+}
+
+@Composable
+fun BookCardSkeleton(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Portada Shimmer
+            Box(
+                modifier = Modifier
+                    .width(70.dp)
+                    .height(105.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmerEffect()
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(105.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    // Badge Shimmer
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerEffect()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Título Shimmer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerEffect()
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    // Autor Shimmer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.55f)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerEffect()
+                    )
+                }
+                // Botón acción Shimmer
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .shimmerEffect()
+                )
+            }
+        }
+    }
+}
+
+// =========================================================================
+// EMPTY STATE COMPONENT (ESTADOS VACÍOS ILUSTRADOS)
+// =========================================================================
+
+@Composable
+fun EmptyStateView(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    actionLabel: String? = null,
+    onActionClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            modifier = Modifier.size(80.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        if (actionLabel != null && onActionClick != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(
+                onClick = onActionClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = actionLabel)
+            }
+        }
+    }
+}
+
+// =========================================================================
+// CONNECTIVITY STATUS BANNER (MODO ONLINE / OFFLINE)
+// =========================================================================
+
+@Composable
+fun ConnectivityStatusBanner(
+    isOnline: Boolean?,
+    isSyncing: Boolean,
+    onRetrySync: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (isSyncing) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Sync,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sincronizando con el servidor central UNAMAD...",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    } else if (isOnline == false) {
+        Surface(
+            color = AmberAccent.copy(alpha = 0.15f),
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CloudOff,
+                        contentDescription = null,
+                        tint = AmberAccent,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Modo Local Offline · Catálogo sincronizado en caché",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = "Reintentar",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onRetrySync() }
+                )
+            }
         }
     }
 }

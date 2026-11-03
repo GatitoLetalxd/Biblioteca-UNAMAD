@@ -1,5 +1,6 @@
 package com.example.biblioteca.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,13 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dns
@@ -36,11 +36,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,16 +50,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.biblioteca.R
 import com.example.biblioteca.ui.components.StatMetricCard
 import com.example.biblioteca.ui.theme.AmberAccent
-import com.example.biblioteca.ui.theme.UnamadGreenDark
-import com.example.biblioteca.ui.theme.UnamadGreenPrimary
+
+
 import com.example.biblioteca.ui.viewmodel.BibliotecaViewModel
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: BibliotecaViewModel,
@@ -66,18 +73,29 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val stats by viewModel.estadisticas.collectAsState()
+    val isSincronizando by viewModel.isSincronizando.collectAsState()
+    val haptic = LocalHapticFeedback.current
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    PullToRefreshBox(
+        isRefreshing = isSincronizando,
+        onRefresh = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.sincronizarConServidor()
+        },
+        modifier = modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // Banner Hero Institucional UNAMAD
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = UnamadGreenPrimary),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -87,41 +105,40 @@ fun DashboardScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(46.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoStories,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo_biblioteca),
+                                contentDescription = "Logo UNAMAD",
+                                modifier = Modifier.size(34.dp)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Biblioteca UNAMAD",
+                            text = "Biblioteca Central UNAMAD",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Universidad Nacional Amazónica de Madre de Dios",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Sistema de Gestión Bibliotecaria, Catálogo Digital y Control de Circulación.",
+                    text = "Sistema Integral de Gestión Bibliotecaria, Catálogo Digital y Control de Circulación.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 20.sp
                 )
             }
@@ -145,7 +162,7 @@ fun DashboardScreen(
                 valor = stats.totalTitulos.toString(),
                 subtitulo = "Registros activos",
                 icon = Icons.AutoMirrored.Filled.MenuBook,
-                iconTint = UnamadGreenPrimary,
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
 
@@ -200,7 +217,7 @@ fun DashboardScreen(
                 valor = "S/. ${String.format(Locale.US, "%.2f", stats.totalMontoMultasPendientes)}",
                 subtitulo = "${stats.totalMultasPendientesCount} pendiente(s)",
                 icon = Icons.Default.MonetizationOn,
-                iconTint = if (stats.totalMultasPendientesCount > 0) Color(0xFFDC2626) else UnamadGreenPrimary,
+                iconTint = if (stats.totalMultasPendientesCount > 0) Color(0xFFDC2626) else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -213,7 +230,7 @@ fun DashboardScreen(
                 valor = stats.totalDevueltos.toString(),
                 subtitulo = "Devoluciones conformes",
                 icon = Icons.Default.CheckCircle,
-                iconTint = UnamadGreenPrimary,
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -246,8 +263,8 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = UnamadGreenPrimary,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(imageVector = Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -311,8 +328,8 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = UnamadGreenDark,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
                     )
                 ) {
                     Icon(imageVector = Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -349,7 +366,7 @@ fun DashboardScreen(
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = null,
-                tint = UnamadGreenPrimary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(20.dp)
                     .padding(top = 2.dp)
@@ -373,4 +390,5 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+}
 }

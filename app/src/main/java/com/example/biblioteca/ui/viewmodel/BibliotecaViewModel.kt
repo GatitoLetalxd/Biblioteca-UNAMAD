@@ -17,6 +17,7 @@ import com.example.biblioteca.model.ReporteInstitucional
 import com.example.biblioteca.model.RolUsuario
 import com.example.biblioteca.model.SolicitudPrestamo
 import com.example.biblioteca.model.Usuario
+import com.example.biblioteca.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,14 +49,24 @@ data class RegistroUiState(
     val passwordVisible: Boolean = false
 )
 
+enum class OrdenamientoCatalogo(val label: String) {
+    TITULO_ASC("Título (A-Z)"),
+    DISPONIBILIDAD_DESC("Mayor disponibilidad"),
+    RECIENTES("Novedades / Recientes"),
+    DIGITAL_PRIMERO("Digitales primero"),
+    FISICO_PRIMERO("Físicos primero")
+}
+
 data class CatalogoUiState(
     val query: String = "",
     val categoriaSeleccionada: String? = null,
     val formatoSeleccionado: FormatoLibro? = null,
     val soloDisponibles: Boolean = false,
+    val ordenamiento: OrdenamientoCatalogo = OrdenamientoCatalogo.TITULO_ASC,
     val libros: List<Libro> = emptyList(),
     val categorias: List<String> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false
 )
 
 data class PrestamosUiState(
@@ -96,6 +107,24 @@ class BibliotecaViewModel(
 
     private val _registroUiState = MutableStateFlow(RegistroUiState())
     val registroUiState: StateFlow<RegistroUiState> = _registroUiState.asStateFlow()
+
+    // Control de Tema (Claro / Oscuro / Sistema)
+    private val _themeMode = MutableStateFlow(repository.obtenerThemeMode())
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun cambiarThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        repository.guardarThemeMode(mode)
+    }
+
+    fun alternarThemeMode() {
+        val nextMode = when (_themeMode.value) {
+            ThemeMode.LIGHT -> ThemeMode.DARK
+            ThemeMode.DARK -> ThemeMode.LIGHT
+            ThemeMode.SYSTEM -> ThemeMode.DARK
+        }
+        cambiarThemeMode(nextMode)
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -202,18 +231,29 @@ class BibliotecaViewModel(
         }
     }
 
+    // Sincronización y estado de red
+    private val _isSincronizando = MutableStateFlow(false)
+    val isSincronizando: StateFlow<Boolean> = _isSincronizando.asStateFlow()
+
+    private val _isOnline = MutableStateFlow<Boolean?>(null) // null: desconocido, true: conectado VPS, false: offline/local
+    val isOnline: StateFlow<Boolean?> = _isOnline.asStateFlow()
+
     fun sincronizarConServidor() {
         viewModelScope.launch {
+            _isSincronizando.value = true
             _mensajeNotificacion.value = "Sincronizando catálogo con el servidor..."
             val result = repository.sincronizarLibros()
             result.fold(
                 onSuccess = { count ->
-                    _mensajeNotificacion.value = "Sincronización completa: $count libros actualizados."
+                    _isOnline.value = true
+                    _mensajeNotificacion.value = "Sincronización completa: $count libros actualizados con el servidor."
                 },
                 onFailure = { error ->
-                    _mensajeNotificacion.value = "Sincronización offline: usando caché local."
+                    _isOnline.value = false
+                    _mensajeNotificacion.value = "Modo Offline: usando base de datos local."
                 }
             )
+            _isSincronizando.value = false
         }
     }
 
@@ -261,6 +301,9 @@ class BibliotecaViewModel(
             RolUsuario.BIBLIOTECARIO -> {
                 iniciarSesionConCredenciales("BIBLIO-01", "biblio123")
             }
+            RolUsuario.ADMIN -> {
+                iniciarSesionConCredenciales("ADMIN-01", "admin123")
+            }
         }
     }
 
@@ -268,6 +311,25 @@ class BibliotecaViewModel(
         repository.cerrarSesion()
         _usuarioActual.value = null
         _loginUiState.value = LoginUiState()
+        _searchQuery.value = ""
+        _categoriaSeleccionada.value = null
+        _formatoSeleccionado.value = null
+        _soloDisponibles.value = false
+        _solicitudesQuery.value = ""
+        _pestanaSolicitudes.value = 0
+        _libroParaSolicitar.value = null
+        _solicitudParaRechazar.value = null
+        _pestanaMultas.value = 0
+        _isGestionMultasDialogOpen.value = false
+        _prestamosQuery.value = ""
+        _pestanaPrestamos.value = 0
+        _isReportesDialogOpen.value = false
+        _isPanelInventarioOpen.value = false
+        _isLibroDialogOpen.value = false
+        _libroAEditar.value = null
+        _isPrestamoDialogOpen.value = false
+        _libroSeleccionadoParaPrestamo.value = null
+        _libroSeleccionadoParaVisor.value = null
         _mensajeNotificacion.value = "Sesión cerrada correctamente."
     }
 
@@ -278,32 +340,39 @@ class BibliotecaViewModel(
     private val _categoriaSeleccionada = MutableStateFlow<String?>(null)
     private val _formatoSeleccionado = MutableStateFlow<FormatoLibro?>(null)
     private val _soloDisponibles = MutableStateFlow(false)
+    private val _ordenamiento = MutableStateFlow(OrdenamientoCatalogo.TITULO_ASC)
+    val ordenamiento: StateFlow<OrdenamientoCatalogo> = _ordenamiento.asStateFlow()
 
     private data class Filtros(
         val query: String,
         val categoria: String?,
         val formato: FormatoLibro?,
-        val soloDisponibles: Boolean
+        val soloDisponibles: Boolean,
+        val ordenamiento: OrdenamientoCatalogo,
+        val isRefreshing: Boolean
     )
 
     private val _filtros = combine(
         _searchQuery,
         _categoriaSeleccionada,
         _formatoSeleccionado,
-        _soloDisponibles
-    ) { q, c, f, s ->
-        Filtros(q, c, f, s)
+        _soloDisponibles,
+        _ordenamiento
+    ) { q, c, f, s, o ->
+        Filtros(q, c, f, s, o, false)
     }
 
     val catalogoUiState: StateFlow<CatalogoUiState> = combine(
         repository.todosLosLibros,
         repository.categorias,
-        _filtros
-    ) { libros, categorias, filtros ->
+        _filtros,
+        _isSincronizando
+    ) { libros, categorias, filtros, isSyncing ->
         val query = filtros.query
         val cat = filtros.categoria
         val formato = filtros.formato
         val soloDisp = filtros.soloDisponibles
+        val orden = filtros.ordenamiento
         val cleanQuery = query.trim().unaccent()
 
         val filtrados = libros.filter { libro ->
@@ -320,20 +389,48 @@ class BibliotecaViewModel(
             coincideQuery && coincideCategoria && coincideFormato && coincideDisponibilidad
         }
 
+        val ordenados = when (orden) {
+            OrdenamientoCatalogo.TITULO_ASC -> filtrados.sortedBy { it.titulo.lowercase() }
+            OrdenamientoCatalogo.DISPONIBILIDAD_DESC -> filtrados.sortedByDescending { it.ejemplaresDisponibles }
+            OrdenamientoCatalogo.RECIENTES -> filtrados.sortedByDescending { it.id }
+            OrdenamientoCatalogo.DIGITAL_PRIMERO -> filtrados.sortedWith(
+                compareByDescending<Libro> { it.formato == FormatoLibro.DIGITAL || it.formato == FormatoLibro.HIBRIDO }
+                    .thenBy { it.titulo.lowercase() }
+            )
+            OrdenamientoCatalogo.FISICO_PRIMERO -> filtrados.sortedWith(
+                compareByDescending<Libro> { it.formato == FormatoLibro.FISICO || it.formato == FormatoLibro.HIBRIDO }
+                    .thenBy { it.titulo.lowercase() }
+            )
+        }
+
         CatalogoUiState(
             query = query,
             categoriaSeleccionada = cat,
             formatoSeleccionado = formato,
             soloDisponibles = soloDisp,
-            libros = filtrados,
+            ordenamiento = orden,
+            libros = ordenados,
             categorias = categorias,
-            isLoading = false
+            isLoading = false,
+            isRefreshing = isSyncing
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = CatalogoUiState(isLoading = true)
     )
+
+    fun onOrdenamientoChange(nuevo: OrdenamientoCatalogo) {
+        _ordenamiento.value = nuevo
+    }
+
+    fun resetFiltrosCatalogo() {
+        _searchQuery.value = ""
+        _categoriaSeleccionada.value = null
+        _formatoSeleccionado.value = null
+        _soloDisponibles.value = false
+        _ordenamiento.value = OrdenamientoCatalogo.TITULO_ASC
+    }
 
     // -------------------------------------------------------------------------
     // SISTEMA DE SOLICITUDES DE PRÉSTAMO (FASE 2)

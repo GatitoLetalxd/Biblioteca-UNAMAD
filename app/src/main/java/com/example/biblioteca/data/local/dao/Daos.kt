@@ -2,10 +2,9 @@ package com.example.biblioteca.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.biblioteca.data.local.entity.LibroEntity
 import com.example.biblioteca.data.local.entity.MultaEntity
 import com.example.biblioteca.data.local.entity.PrestamoEntity
@@ -64,10 +63,10 @@ interface UsuarioDao {
     @Query("SELECT * FROM usuarios WHERE rol = :rol ORDER BY nombre ASC")
     fun getUsuariosByRol(rol: String): Flow<List<UsuarioEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertUsuario(usuario: UsuarioEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(usuarios: List<UsuarioEntity>)
 
     @Update
@@ -104,10 +103,10 @@ interface LibroDao {
     @Query("SELECT DISTINCT categoria FROM libros WHERE categoria != '' ORDER BY categoria ASC")
     fun getAllCategorias(): Flow<List<String>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertLibro(libro: LibroEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(libros: List<LibroEntity>)
 
     @Update
@@ -169,7 +168,7 @@ interface PrestamoDao {
     @Query("SELECT * FROM prestamos WHERE id = :id LIMIT 1")
     suspend fun getPrestamoById(id: Long): PrestamoEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertPrestamo(prestamo: PrestamoEntity): Long
 
     @Update
@@ -226,10 +225,10 @@ interface SolicitudPrestamoDao {
     @Query("SELECT * FROM solicitudes_prestamo WHERE id = :id LIMIT 1")
     suspend fun getSolicitudById(id: Long): SolicitudPrestamoEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertSolicitud(solicitud: SolicitudPrestamoEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(solicitudes: List<SolicitudPrestamoEntity>)
 
     @Update
@@ -272,10 +271,10 @@ interface MultaDao {
     @Query("SELECT * FROM multas WHERE prestamoId = :prestamoId LIMIT 1")
     suspend fun getMultaByPrestamoId(prestamoId: Long): MultaEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertMulta(multa: MultaEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(multas: List<MultaEntity>)
 
     @Update

@@ -21,8 +21,9 @@ data class Usuario(
         return "$p1$p2"
     }
 
-    val esBibliotecario: Boolean get() = rol == RolUsuario.BIBLIOTECARIO
+    val esBibliotecario: Boolean get() = rol == RolUsuario.BIBLIOTECARIO || rol == RolUsuario.ADMIN
     val esEstudiante: Boolean get() = rol == RolUsuario.ESTUDIANTE
+    val esAdmin: Boolean get() = rol == RolUsuario.ADMIN
 }
 
 data class Libro(

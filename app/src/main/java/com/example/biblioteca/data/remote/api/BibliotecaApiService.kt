@@ -45,6 +45,11 @@ interface BibliotecaApiService {
         @Path("id") id: Long
     ): Response<ApiResponse<LibroRemoteDto>>
 
+    @DELETE("libros/{id}")
+    suspend fun deleteLibro(
+        @Path("id") id: Long
+    ): Response<ApiResponse<Any>>
+
     // -----------------------------------------------------------------
     // SOLICITUDES DE PRÉSTAMO FÍSICO
     // -----------------------------------------------------------------
