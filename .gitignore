@@ -29,4 +29,10 @@ backend/yarn-error.log*
 .kotlin/
 scratch/
 
-
+# ---------------------------------------------------------------------
+# RECURSOS LOCALES Y AUXILIARES (EXCLUIDOS DEL REPOSITORIO DE SUSTENTACION)
+# ---------------------------------------------------------------------
+figma-plugin/
+scripts/
+libros_descargados/
+Logo UNAMAD.png
