@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #0B0F17;
+      color: #F8FAFC;
+      box-sizing: border-box;
+    }
+    h2 {
+      margin: 0 0 6px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #FBBF24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    p {
+      margin: 0 0 16px 0;
+      font-size: 11px;
+      color: #94A3B8;
+      line-height: 1.4;
+    }
+    .badge {
+      display: inline-block;
+      background: #1A2130;
+      color: #38BDF8;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      border: 1px solid #2B3346;
+    }
+    .btn {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary {
+      background: #FBBF24;
+      color: #1C1917;
+    }
+    .btn-primary:hover {
+      background: #F59E0B;
+    }
+    .btn-secondary {
+      background: #1A2130;
+      color: #F8FAFC;
+      border: 1px solid #2B3346;
+    }
+    .btn-secondary:hover {
+      background: #242E42;
+    }
+    .btn-danger {
+      background: #2A1719;
+      color: #FCA5A5;
+      border: 1px solid #7F1D1D;
+    }
+    .btn-danger:hover {
+      background: #3B1B1E;
+    }
+    .footer {
+      margin-top: 14px;
+      font-size: 10px;
+      color: #64748B;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Biblioteca UNAMAD</h2>
+  <span class="badge">Plugin Local Ilimitado (0 API Limits)</span>
+  <p>Sincroniza y limpia tu diseño con un solo clic directamente desde tu PC.</p>
+
+  <button class="btn btn-primary" id="btn-sync-all">
+    Sincronizar Todo (Obsidian + Limpieza)
+  </button>
+
+  <button class="btn btn-secondary" id="btn-obsidian">
+    Aplicar Tema Oscuro Obsidian (#0B0F17)
+  </button>
+
+  <button class="btn btn-danger" id="btn-clean">
+    Remover Escáner e Icono Salir Superior
+  </button>
+
+  <button class="btn btn-secondary" id="btn-close" style="margin-top: 12px;">
+    Cerrar Plugin
+  </button>
+
+  <div class="footer">UNAMAD — Sistema de Biblioteca Central</div>
+
+  <script>
+    document.getElementById('btn-sync-all').onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'sincronizar-todo' } }, '*');
+    };
+    document.getElementById('btn-obsidian').onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'aplicar-tema-obsidian' } }, '*');
+    };
+    document.getElementById('btn-clean').onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'limpiar-residuales' } }, '*');
+    };
+    document.getElementById('btn-close').onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'cerrar' } }, '*');
+    };
+  </script>
+</body>
+</html>
