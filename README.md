@@ -37,6 +37,8 @@ Monorepo institucional de alto rendimiento que integra la **aplicación móvil n
 ```text
 Biblioteca-UNAMAD/
 ├── app/                        # Aplicación Móvil Android (Jetpack Compose + Clean Architecture + Room)
+│   ├── build/outputs/apk/      # APK compilado v1.0 para instalación directa en dispositivos
+│   ├── build/reports/          # Reportes HTML de pruebas unitarias y calidad
 │   ├── src/main/java/com/example/biblioteca/
 │   │   ├── MainActivity.kt     # Actividad principal y observador de tema visual
 │   │   ├── model/              # Modelos de dominio inmutables y Enums
@@ -55,13 +57,12 @@ Biblioteca-UNAMAD/
 │   └── src/main/res/           # Recursos visuales, WebP optimizados y vectores adaptativos
 ├── backend/                    # Servidor Backend API REST (Node.js + TypeScript + Express + Prisma + PostgreSQL)
 │   ├── src/                    # Controladores, Servicios, Middlewares y Rutas modulares
-│   ├── prisma/                 # Esquema relacional y script de siembra (seed.ts)
+│   ├── prisma/                 # Esquema relacional, catálogo JSON y seeds SQL
 │   ├── storage/libros/         # Almacén de los 100 libros completos en PDF
 │   ├── API.md                  # Especificación técnica exhaustiva de endpoints REST
 │   └── README.md               # Guía de despliegue en servidor VPS con PM2, Nginx y SSL
-├── libros_descargados/         # Acervo bibliográfico descargado y scripts DDL
 ├── GUIA_EXPOSICION_PROYECTO.md # Guía estructurada para la defensa y exposición técnica
-├── requerimientos.md           # Especificación de Requerimientos de Software (ERS)
+├── requerimientos.md           # Especificación de Requerimientos de Software (ERS) completa
 ├── estructura.md               # Mapeo de archivos y recursos
 └── arquitectura.md             # Arquitectura de software, modelo de datos y diagramas
 ```
@@ -96,9 +97,36 @@ El sistema implementa **Control de Acceso Basado en Roles** con 3 perfiles difer
 
 ---
 
-## 4. Puesta en Marcha Rápida
+## 4. Requisitos del Sistema (Resumen Ejecutivo)
 
-### 4.1. Servidor Backend API (Desarrollo Local)
+El sistema ha sido implementado satisfaciendo los requerimientos definidos en la [Especificación de Requerimientos de Software (ERS)](./requerimientos.md):
+
+### 4.1. Requisitos Funcionales (RF)
+
+| Código | Requisito | Descripción |
+|---|---|---|
+| **RF-01** | **Autenticación y RBAC** | Autoregistro de estudiantes con código universitario de 8 dígitos (sin DNI), inicio de sesión con JWT (7 días de vigencia) y control de acceso estricto según rol (`ESTUDIANTE`, `BIBLIOTECARIO`, `ADMIN`). |
+| **RF-02** | **Catálogo y Acervo Digital** | Búsqueda por título, autor, ISBN o categoría, filtros de formato/disponibilidad y acceso a más de 100 libros con visor digital in-app personalizable y descarga directa de PDFs. |
+| **RF-03** | **Solicitudes y Candado de Solvencia** | Emisión de solicitudes de préstamo físico (3, 7 o 14 días), aprobación/rechazo documentado en ventanilla y bloqueo preventivo automático si el alumno registra multas o préstamos vencidos. |
+| **RF-04** | **Préstamos y Devoluciones** | Registro de préstamos directos en mostrador, devolución física con restitución inmediata de inventario disponible y seguimiento de estados (`ACTIVO`, `DEVUELTO`, `VENCIDO`). |
+| **RF-05** | **Cálculo y Gestión de Multas** | Detección y cómputo automático de mora institucional por días de retraso, consulta de solvencia en carnet digital y registro de cobro o condonación documentada en ventanilla. |
+| **RF-06** | **Inventario en Vivo y Reportes** | Panel de inventario con identificación de lectores que custodian libros, dashboard de KPIs en tiempo real y exportación de reportes institucionales de circulación. |
+
+### 4.2. Requisitos No Funcionales (RNF)
+
+| Código | Categoría | Especificación |
+|---|---|---|
+| **RNF-01** | **Arquitectura Offline-First** | Persistencia local mediante SQLite Room Database v4 sincronizada de forma reactiva con el backend, garantizando consulta de catálogo, carnet y préstamos sin conexión activa. |
+| **RNF-02** | **Rendimiento y Optimización** | Carga asíncrona de portadas en formato WebP con doble capa de caché (memoria y disco vía Coil), visor de lectura fluido y consumo backend menor a 150 MB de RAM. |
+| **RNF-03** | **Seguridad y Cifrado** | Conexiones protegidas sobre HTTPS/TLS con certificados SSL, contraseñas cifradas mediante `bcrypt` (factor de costo 10), tokens JWT firmados y prevención de SQL Injection mediante Prisma ORM. |
+| **RNF-04** | **Diseño y Accesibilidad (WCAG AAA)** | Interfaz moderna en Jetpack Compose con Tema Claro y Modo Oscuro Obsidian, cumpliendo ratios de contraste superiores a 7:1 en textos secundarios y 11:1 en acentos e interactivos. |
+| **RNF-05** | **Mantenibilidad y Calidad** | Arquitectura limpia desacoplada (MVVM + Repositorios en Android, Capas de Rutas-Controladores-Servicios en backend), tipado estricto con Kotlin y TypeScript, y suite de pruebas unitarias automatizadas. |
+
+---
+
+## 5. Puesta en Marcha Rápida
+
+### 5.1. Servidor Backend API (Desarrollo Local)
 ```bash
 cd backend
 
@@ -118,7 +146,7 @@ npm run dev
 # -> API operativa en http://localhost:3000/api/v1
 ```
 
-### 4.2. Aplicación Móvil Android
+### 5.2. Aplicación Móvil Android
 1. Abrir el directorio raíz en **Android Studio Ladybug (o versión superior)**.
 2. Sincronizar dependencias mediante Gradle (`Sync Project with Gradle Files`).
 3. Compilar y ejecutar en emulador o dispositivo físico (Android 8.0+ / API 26+):
@@ -129,7 +157,7 @@ npm run dev
 
 ---
 
-## 5. Credenciales Iniciales de Prueba (Seed)
+## 6. Credenciales Iniciales de Prueba (Seed)
 
 | Rol | Código | Contraseña | Usuario | Estado Inicial |
 |---|:---:|:---:|---|---|
@@ -140,7 +168,7 @@ npm run dev
 
 ---
 
-## 6. Recursos para Exposición y Documentación Técnica
+## 7. Recursos para Exposición y Documentación Técnica
 
 - **[Guía para Exposición y Defensa Técnica](./GUIA_EXPOSICION_PROYECTO.md)** *(Arquitectura, diagrama de flujo, respuestas a preguntas del jurado y guion de presentación).*
 - [Especificación de Requerimientos de Software (ERS)](./requerimientos.md)
